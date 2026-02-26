@@ -108,6 +108,13 @@ Any change that touches permissions, background work, or user data handling shou
   - When introducing new patterns or dependencies, favor simplicity and established Android/Jetpack practices.
   - Document architectural decisions briefly (e.g., in PR descriptions or top-level comments where the decision is applied).
 
+- **Build verification**
+  - **Always run a build after making code changes** to confirm the app compiles and no regressions were introduced.
+  - Use the project’s Gradle wrapper:
+    - **Windows**: `.\gradlew.bat assembleDebug`
+    - **macOS / Linux**: `./gradlew assembleDebug`
+  - Fix any compilation or build errors before considering the change complete. Do not leave the project in a failing build state.
+
 ---
 
 ## Future Documentation Hooks
