@@ -5,8 +5,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
@@ -32,6 +35,8 @@ private val sampleListItems = listOf(
 
 @Composable
 fun SampleListScreen(modifier: Modifier = Modifier) {
+    val toggledOn = remember { mutableStateMapOf<String, Boolean>() }
+
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -47,6 +52,12 @@ fun SampleListScreen(modifier: Modifier = Modifier) {
                 },
                 supportingContent = {
                     Text(text = item.subtitle)
+                },
+                trailingContent = {
+                    Switch(
+                        checked = toggledOn[item.title] ?: true,
+                        onCheckedChange = { toggledOn[item.title] = it },
+                    )
                 },
             )
         }
