@@ -121,4 +121,3 @@ As the project evolves, additional documentation artifacts may be introduced:
   - Alert scheduling strategy and trade-offs (e.g., WorkManager vs. AlarmManager vs. foreground services).
 
 When adding such documents, ensure they reference and remain consistent with the vision and constraints described here.
-
