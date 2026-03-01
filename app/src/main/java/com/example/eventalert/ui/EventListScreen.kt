@@ -33,10 +33,18 @@ private val dateFormat = SimpleDateFormat("EEE h:mm a", Locale.getDefault())
 
 private fun formatEventSubtitle(event: CalendarEvent): String {
     return try {
-        val startStr = dateFormat.format(Date(event.startTimeMillis))
+        val fullDateFormat = SimpleDateFormat("EEE, MMM d, yyyy h:mm a", Locale.getDefault())
+        val shortTimeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
+
+        val startDate = Date(event.startTimeMillis)
         val alertMillis = event.startTimeMillis - DEFAULT_ALERT_MINUTES * 60 * 1000
-        val alertStr = dateFormat.format(Date(alertMillis))
-        "$startStr · Alert $alertStr"
+        val alertDate = Date(alertMillis)
+
+        val dateStr = SimpleDateFormat("EEE, MMM d, yyyy", Locale.getDefault()).format(startDate)
+        val startTimeStr = shortTimeFormat.format(startDate)
+        val alertTimeStr = shortTimeFormat.format(alertDate)
+
+        "$dateStr · $startTimeStr · Alert $alertTimeStr"
     } catch (e: Exception) {
         "Event · Alert"
     }
