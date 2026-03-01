@@ -91,7 +91,7 @@ fun EventListScreen(
         } catch (e: Exception) {
             emptyList()
         }
-        events = newEvents
+        events = newEvents.filter { alertTimeMillis(it) > now }
         loadedEndMillis = minOf(now + EVENT_WINDOW_MS, maxEnd)
         hasMore = loadedEndMillis < maxEnd
         loading = false
@@ -133,7 +133,8 @@ fun EventListScreen(
             }
             val existingKeys = events.mapTo(mutableSetOf()) { eventKey(it) }
             val newEvents = batch.filter { eventKey(it) !in existingKeys }
-            events = events + newEvents
+            val filteredNew = newEvents.filter { alertTimeMillis(it) > now }
+            events = (events + filteredNew).filter { alertTimeMillis(it) > now }
             loadedEndMillis = endForQuery
             if (batch.isEmpty() || loadedEndMillis >= maxEnd) hasMore = false
             loadingMore = false

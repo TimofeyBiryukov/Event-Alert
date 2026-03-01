@@ -1,6 +1,8 @@
 package com.example.eventalert
 
 import android.Manifest
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
 import android.database.ContentObserver
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -27,9 +29,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import androidx.core.content.ContextCompat.registerReceiver
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.example.eventalert.alert.AlarmReceiver
 import com.example.eventalert.alert.AlertRescheduleWorker
 import com.example.eventalert.alert.AlertScheduler
 import com.example.eventalert.data.CalendarRepository
@@ -49,6 +53,11 @@ class MainActivity : ComponentActivity() {
 
     /** Bumping this triggers EventListScreen to do a full reload; updated on resume and calendar change. */
     private val refreshTriggerState = mutableStateOf(0L)
+
+    /** Bumps the refresh trigger so EventListScreen reloads (e.g. when an alert has fired). */
+    fun refreshEventList() {
+        refreshTriggerState.value = System.currentTimeMillis()
+    }
 
     /** Called when calendar data may have changed or when app is resumed; refreshes list and reschedules alerts. */
     fun requestSync() {
@@ -170,6 +179,19 @@ class MainActivity : ComponentActivity() {
                             cr.registerContentObserver(CalendarContract.Instances.CONTENT_URI, true, observer)
                             onDispose {
                                 cr.unregisterContentObserver(observer)
+                            }
+                        }
+                        DisposableEffect(activity) {
+                            if (activity == null) return@DisposableEffect onDispose { }
+                            val receiver = object : BroadcastReceiver() {
+                                override fun onReceive(context: android.content.Context?, intent: android.content.Intent?) {
+                                    activity.refreshEventList()
+                                }
+                            }
+                            val filter = IntentFilter(AlarmReceiver.ACTION_ALERT_FIRED)
+                            registerReceiver(activity, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+                            onDispose {
+                                activity.unregisterReceiver(receiver)
                             }
                         }
                         EventListScreen(
