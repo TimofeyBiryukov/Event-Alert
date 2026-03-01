@@ -46,6 +46,18 @@ Within this structure, keep components small, focused, and testable.
 
 ---
 
+## Core Implementations (Reference)
+
+Key implementation details are summarized in **`docs/CalendarImportAndAlerts.md`**. Read that file when touching calendar import, event list, wizard, or all-day/reminder behavior.
+
+- **Calendar data and reminders**: `CalendarRepository`, `CalendarEvent` (all-day, `reminderMinutesBefore`), `CalendarItem`.
+- **Wizard and persistence**: `CalendarWizardScreen`, `SelectedCalendarsPreferences`; navigation and first-run logic in `MainActivity`.
+- **Event list**: `EventListScreen` (pagination, `EVENT_WINDOW_MS`, `MAX_IMPORT_WINDOW_MS`, `eventKey`, `formatEventSubtitle` for timed vs all-day).
+
+Build verification: run `.\gradlew.bat assembleDebug` (Windows) or `./gradlew assembleDebug` (macOS/Linux) after code changes.
+
+---
+
 ## Coding & Design Conventions
 
 - **Language & style**
