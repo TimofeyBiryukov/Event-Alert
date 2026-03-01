@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -17,6 +18,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -27,7 +29,11 @@ import java.util.Date
 import java.util.Locale
 
 private const val DEFAULT_ALERT_MINUTES = 10
-private const val ONE_YEAR_MS = 365L * 24 * 60 * 60 * 1000
+/** Time window for each page of events (initial load and "load more"). */
+private const val EVENT_WINDOW_MS = 30L * 24 * 60 * 60 * 1000
+/** Don't load events beyond this from now (stops endless scroll with recurring events). */
+private const val MAX_IMPORT_WINDOW_MS = 365L * 24 * 60 * 60 * 1000
+private const val LOAD_MORE_THRESHOLD = 5
 
 private val dateFormat = SimpleDateFormat("EEE h:mm a", Locale.getDefault())
 
@@ -62,21 +68,67 @@ fun EventListScreen(
 ) {
     var loading by remember { mutableStateOf<Boolean>(true) }
     var events by remember { mutableStateOf<List<CalendarEvent>>(emptyList()) }
+    var loadedEndMillis by remember { mutableStateOf(0L) }
+    var loadingMore by remember { mutableStateOf<Boolean>(false) }
+    var hasMore by remember { mutableStateOf(true) }
     val toggledOn = remember { mutableStateMapOf<String, Boolean>() }
+    val listState = rememberLazyListState()
 
     LaunchedEffect(calendarIds) {
         loading = true
+        val now = System.currentTimeMillis()
+        val maxEnd = now + MAX_IMPORT_WINDOW_MS
         events = try {
-            val now = System.currentTimeMillis()
             repository.getEvents(
                 calendarIds = calendarIds.toList(),
                 fromMillis = now,
-                toMillis = now + ONE_YEAR_MS,
-            )
+                toMillis = minOf(now + EVENT_WINDOW_MS, maxEnd),
+            ).distinctBy { eventKey(it) }
         } catch (e: Exception) {
             emptyList()
         }
+        loadedEndMillis = minOf(now + EVENT_WINDOW_MS, maxEnd)
+        hasMore = loadedEndMillis < maxEnd
         loading = false
+    }
+
+    LaunchedEffect(listState, calendarIds) {
+        snapshotFlow {
+            val layoutInfo = listState.layoutInfo
+            val lastIdx = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            val total = layoutInfo.totalItemsCount
+            val nearEnd = lastIdx >= total - LOAD_MORE_THRESHOLD && total > 0
+            val end = loadedEndMillis
+            val loadingMoreNow = loadingMore
+            val hasMoreNow = hasMore
+            nearEnd && !loading && !loadingMoreNow && hasMoreNow
+        }.collect { shouldLoad ->
+            if (!shouldLoad) return@collect
+            val now = System.currentTimeMillis()
+            val maxEnd = now + MAX_IMPORT_WINDOW_MS
+            val start = loadedEndMillis
+            if (start >= maxEnd) {
+                hasMore = false
+                return@collect
+            }
+            loadingMore = true
+            val endForQuery = minOf(start + EVENT_WINDOW_MS, maxEnd)
+            val batch = try {
+                repository.getEvents(
+                    calendarIds = calendarIds.toList(),
+                    fromMillis = start,
+                    toMillis = endForQuery,
+                )
+            } catch (e: Exception) {
+                emptyList()
+            }
+            val existingKeys = events.mapTo(mutableSetOf()) { eventKey(it) }
+            val newEvents = batch.filter { eventKey(it) !in existingKeys }
+            events = events + newEvents
+            loadedEndMillis = endForQuery
+            if (batch.isEmpty() || loadedEndMillis >= maxEnd) hasMore = false
+            loadingMore = false
+        }
     }
 
     when {
@@ -101,6 +153,7 @@ fun EventListScreen(
         }
         else -> {
             LazyColumn(
+                state = listState,
                 modifier = modifier
                     .fillMaxSize()
                     .padding(vertical = 8.dp),
@@ -122,6 +175,18 @@ fun EventListScreen(
                             )
                         },
                     )
+                }
+                if (loadingMore) {
+                    item(key = "loading_more") {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
                 }
             }
         }
