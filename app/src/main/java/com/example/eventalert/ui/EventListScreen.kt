@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import com.example.eventalert.data.CalendarEvent
 import com.example.eventalert.data.CalendarRepository
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
@@ -42,7 +43,16 @@ private fun formatEventSubtitle(event: CalendarEvent): String {
         val dateStr = SimpleDateFormat("EEE, MMM d, yyyy", Locale.getDefault()).format(Date(event.startTimeMillis))
         if (event.isAllDay) {
             val alertStr = event.reminderMinutesBefore?.let { min ->
-                val alertMillis = event.startTimeMillis - min * 60L * 1000
+                // All-day BEGIN from the provider is often midnight UTC; use start of event day in local TZ
+                // so "10 min before" shows as 23:50 previous day, not 4:50 AM next day in UTC+x zones.
+                val cal = Calendar.getInstance()
+                cal.timeInMillis = event.startTimeMillis
+                cal.set(Calendar.HOUR_OF_DAY, 0)
+                cal.set(Calendar.MINUTE, 0)
+                cal.set(Calendar.SECOND, 0)
+                cal.set(Calendar.MILLISECOND, 0)
+                val dayStartLocalMillis = cal.timeInMillis
+                val alertMillis = dayStartLocalMillis - min * 60L * 1000
                 val alertDate = Date(alertMillis)
                 SimpleDateFormat("EEE, MMM d, h:mm a", Locale.getDefault()).format(alertDate)
             } ?: "Uses calendar reminder"
