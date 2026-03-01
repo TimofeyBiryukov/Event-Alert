@@ -6,7 +6,43 @@ import android.provider.CalendarContract
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+/** Pair of account name and type for a calendar; used to request sync. */
+data class CalendarAccount(val name: String, val type: String)
+
 class CalendarRepository(private val contentResolver: ContentResolver) {
+
+    /**
+     * Returns distinct (accountName, accountType) for the given calendar IDs.
+     * Used to request sync for the accounts that own these calendars.
+     */
+    suspend fun getAccountsForCalendars(calendarIds: List<Long>): List<CalendarAccount> = withContext(Dispatchers.IO) {
+        if (calendarIds.isEmpty()) return@withContext emptyList()
+        val uri = CalendarContract.Calendars.CONTENT_URI
+        val projection = arrayOf(
+            CalendarContract.Calendars.ACCOUNT_NAME,
+            CalendarContract.Calendars.ACCOUNT_TYPE,
+        )
+        val placeholders = calendarIds.joinToString(",") { "?" }
+        val selection = "${CalendarContract.Calendars._ID} IN ($placeholders)"
+        val selectionArgs = calendarIds.map { it.toString() }.toTypedArray()
+        val cursor = contentResolver.query(uri, projection, selection, selectionArgs, null)
+            ?: return@withContext emptyList()
+        cursor.use {
+            val nameIdx = it.getColumnIndex(CalendarContract.Calendars.ACCOUNT_NAME)
+            val typeIdx = it.getColumnIndex(CalendarContract.Calendars.ACCOUNT_TYPE)
+            if (nameIdx < 0 || typeIdx < 0) return@use emptyList<CalendarAccount>()
+            val seen = mutableSetOf<Pair<String, String>>()
+            buildList {
+                while (it.moveToNext()) {
+                    val name = it.getString(nameIdx) ?: continue
+                    val type = it.getString(typeIdx) ?: continue
+                    if (name.isNotBlank() && type.isNotBlank() && seen.add(name to type)) {
+                        add(CalendarAccount(name, type))
+                    }
+                }
+            }
+        }
+    }
 
     suspend fun getCalendars(): List<CalendarItem> = withContext(Dispatchers.IO) {
         // Use null projection for maximum compatibility: some providers (e.g. on emulator

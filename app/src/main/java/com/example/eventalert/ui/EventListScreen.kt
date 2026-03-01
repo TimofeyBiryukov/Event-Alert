@@ -1,22 +1,16 @@
 package com.example.eventalert.ui
 
-import android.app.AlarmManager
-import android.app.PendingIntent
-import android.content.Context
-import android.content.Intent
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,12 +21,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.example.eventalert.alert.AlarmReceiver
 import com.example.eventalert.alert.EVENT_WINDOW_MS
 import com.example.eventalert.alert.MAX_IMPORT_WINDOW_MS
 import com.example.eventalert.alert.alertTimeMillis
@@ -44,8 +35,6 @@ import java.util.Date
 import java.util.Locale
 
 private const val LOAD_MORE_THRESHOLD = 5
-
-private val dateFormat = SimpleDateFormat("EEE h:mm a", Locale.getDefault())
 
 private fun formatEventSubtitle(event: CalendarEvent): String {
     return try {
@@ -66,10 +55,13 @@ private fun formatEventSubtitle(event: CalendarEvent): String {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EventListScreen(
     calendarIds: Set<Long>,
     repository: CalendarRepository,
+    refreshTrigger: Long = 0L,
+    onRefreshRequested: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     var loading by remember { mutableStateOf<Boolean>(true) }
@@ -77,16 +69,20 @@ fun EventListScreen(
     var loadedEndMillis by remember { mutableStateOf(0L) }
     var loadingMore by remember { mutableStateOf<Boolean>(false) }
     var hasMore by remember { mutableStateOf(true) }
+    var isRefreshing by remember { mutableStateOf(false) }
     val toggledOn = remember { mutableStateMapOf<String, Boolean>() }
     val listState = rememberLazyListState()
-    var testAlertScheduledAt by remember { mutableStateOf<Long?>(null) }
-    var countdownTick by remember { mutableStateOf(0) }
 
-    LaunchedEffect(calendarIds) {
+    LaunchedEffect(calendarIds, refreshTrigger) {
         loading = true
+        if (events.isEmpty()) {
+            events = emptyList()
+            loadedEndMillis = 0L
+            hasMore = true
+        }
         val now = System.currentTimeMillis()
         val maxEnd = now + MAX_IMPORT_WINDOW_MS
-        events = try {
+        val newEvents = try {
             repository.getEvents(
                 calendarIds = calendarIds.toList(),
                 fromMillis = now,
@@ -95,9 +91,14 @@ fun EventListScreen(
         } catch (e: Exception) {
             emptyList()
         }
+        events = newEvents
         loadedEndMillis = minOf(now + EVENT_WINDOW_MS, maxEnd)
         hasMore = loadedEndMillis < maxEnd
         loading = false
+    }
+
+    LaunchedEffect(loading) {
+        if (!loading) isRefreshing = false
     }
 
     LaunchedEffect(listState, calendarIds) {
@@ -139,172 +140,74 @@ fun EventListScreen(
         }
     }
 
-    val context = LocalContext.current
-    val timeFormat = remember { SimpleDateFormat("h:mm:ss a", Locale.getDefault()) }
-
-    LaunchedEffect(testAlertScheduledAt) {
-        testAlertScheduledAt ?: return@LaunchedEffect
-        while (true) {
-            delay(1000L)
-            countdownTick++
-        }
-    }
-
-    Column(modifier = modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Button(
-                onClick = {
-                    val eventKey = "test_now"
-                    val startTime = System.currentTimeMillis()
-                    context.startActivity(
-                        Intent(context, ReminderActivity::class.java).apply {
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                            putExtra(AlarmReceiver.EXTRA_EVENT_KEY, eventKey)
-                            putExtra(AlarmReceiver.EXTRA_TITLE, "Test event")
-                            putExtra(AlarmReceiver.EXTRA_START_TIME_MILLIS, startTime)
-                            putExtra(AlarmReceiver.EXTRA_IS_ALL_DAY, false)
-                            putExtra(ReminderActivity.EXTRA_NOTIFICATION_ID, AlarmReceiver.notificationIdForEventKey(eventKey))
-                        },
-                    )
-                },
-            ) {
-                Text("Test Alert")
+    Box(modifier = modifier.fillMaxSize()) {
+        when {
+            loading && events.isEmpty() -> {
+                Box(
+                    modifier = Modifier.fillMaxSize().padding(32.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator()
+                }
             }
-            Button(
-                onClick = {
-                    val app = context.applicationContext
-                    val triggerAt = System.currentTimeMillis() + 60_000L
-                    val eventKey = "test_1min"
-                    val intent = Intent(app, AlarmReceiver::class.java).apply {
-                        putExtra(AlarmReceiver.EXTRA_EVENT_KEY, eventKey)
-                        putExtra(AlarmReceiver.EXTRA_TITLE, "Test event (1 min)")
-                        putExtra(AlarmReceiver.EXTRA_START_TIME_MILLIS, triggerAt)
-                        putExtra(AlarmReceiver.EXTRA_IS_ALL_DAY, false)
-                    }
-                    val pending = PendingIntent.getBroadcast(
-                        app,
-                        eventKey.hashCode(),
-                        intent,
-                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-                    )
-                    val alarmManager = app.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-                    val useExact = android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S ||
-                        alarmManager.canScheduleExactAlarms()
-                    if (useExact) {
-                        try {
-                            val showIntent = PendingIntent.getActivity(
-                                app, 0,
-                                Intent(app, com.example.eventalert.MainActivity::class.java),
-                                PendingIntent.FLAG_IMMUTABLE,
-                            )
-                            alarmManager.setAlarmClock(
-                                AlarmManager.AlarmClockInfo(triggerAt, showIntent),
-                                pending,
-                            )
-                        } catch (_: SecurityException) {
-                            alarmManager.setWindow(
-                                AlarmManager.RTC_WAKEUP,
-                                triggerAt,
-                                15_000L,
-                                pending,
-                            )
+            else -> {
+                PullToRefreshBox(
+                    isRefreshing = isRefreshing,
+                    onRefresh = {
+                        isRefreshing = true
+                        onRefreshRequested?.invoke()
+                    },
+                ) {
+                    when {
+                        events.isEmpty() -> {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(32.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = "No upcoming events",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                )
+                            }
                         }
-                    } else {
-                        alarmManager.setWindow(
-                            AlarmManager.RTC_WAKEUP,
-                            triggerAt,
-                            15_000L,
-                            pending,
-                        )
-                    }
-                    testAlertScheduledAt = triggerAt
-                },
-            ) {
-                Text("Test Alert in 1 min")
-            }
-        }
-
-        testAlertScheduledAt?.let { scheduledAt ->
-            val remainingSec = ((scheduledAt - System.currentTimeMillis()) / 1000).toInt()
-            val tick = countdownTick
-            val line1 = "Scheduled for ${timeFormat.format(Date(scheduledAt))} (1 min from when you tapped)"
-            val line2 = if (remainingSec > 0) {
-                "Countdown: ${remainingSec}s — full-screen alert may still be delayed by battery/Doze."
-            } else {
-                "Expected time passed. If no alert appeared, the system likely delayed it (battery saver, Doze)."
-            }
-            Column(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-            ) {
-                Text(
-                    text = line1,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Text(
-                    text = line2,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
-        }
-
-        Box(Modifier.weight(1f)) {
-            when {
-                loading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize().padding(32.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        CircularProgressIndicator()
-                    }
-                }
-                events.isEmpty() -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize().padding(32.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = "No upcoming events",
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
-                    }
-                }
-                else -> {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(vertical = 8.dp),
-                    ) {
-                        items(
-                            items = events,
-                            key = { ev -> eventKey(ev) },
-                        ) { event ->
-                            val key = eventKey(event)
-                            ListItem(
-                                headlineContent = { Text(text = event.title) },
-                                supportingContent = {
-                                    Text(text = formatEventSubtitle(event))
-                                },
-                                trailingContent = {
-                                    Switch(
-                                        checked = toggledOn[key] ?: true,
-                                        onCheckedChange = { checked -> toggledOn[key] = checked },
+                        else -> {
+                            LazyColumn(
+                                state = listState,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(vertical = 8.dp),
+                            ) {
+                                items(
+                                    items = events,
+                                    key = { ev -> eventKey(ev) },
+                                ) { event ->
+                                    val key = eventKey(event)
+                                    ListItem(
+                                        headlineContent = { Text(text = event.title) },
+                                        supportingContent = {
+                                            Text(text = formatEventSubtitle(event))
+                                        },
+                                        trailingContent = {
+                                            Switch(
+                                                checked = toggledOn[key] ?: true,
+                                                onCheckedChange = { checked -> toggledOn[key] = checked },
+                                            )
+                                        },
                                     )
-                                },
-                            )
-                        }
-                        if (loadingMore) {
-                            item(key = "loading_more") {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(16.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    CircularProgressIndicator()
+                                }
+                                if (loadingMore) {
+                                    item(key = "loading_more") {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .padding(16.dp),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            CircularProgressIndicator()
+                                        }
+                                    }
                                 }
                             }
                         }

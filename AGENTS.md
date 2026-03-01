@@ -143,5 +143,6 @@ As the project evolves, additional documentation artifacts may be introduced:
 - Additional docs for:
   - Calendar integration details.
   - Alert scheduling strategy and trade-offs (e.g., WorkManager vs. AlarmManager vs. foreground services).
+  - Sync and refresh strategy (ContentObserver, refresh on open, periodic WorkManager) is summarized in **`docs/CalendarImportAndAlerts.md`** under “Sync and refresh”.
 
 When adding such documents, ensure they reference and remain consistent with the vision and constraints described here.

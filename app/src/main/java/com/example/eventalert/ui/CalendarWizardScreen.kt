@@ -40,7 +40,7 @@ import com.example.eventalert.data.setSelectedCalendarIds
 @Composable
 fun CalendarWizardScreen(
     repository: CalendarRepository,
-    onComplete: () -> Unit,
+    onComplete: (Set<Long>) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -135,7 +135,10 @@ fun CalendarWizardScreen(
                     )
                 }
                 else -> {
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
                         items(calendars, key = { it.id }) { calendar ->
                             ListItem(
                                 headlineContent = { Text(calendar.displayName.ifBlank { "Calendar ${calendar.id}" }) },
@@ -162,9 +165,10 @@ fun CalendarWizardScreen(
             val scope = rememberCoroutineScope()
             Button(
                 onClick = {
+                    val ids = selectedIds.toSet()
+                    onComplete(ids)
                     scope.launch {
-                        setSelectedCalendarIds(context, selectedIds.toSet())
-                        onComplete()
+                        setSelectedCalendarIds(context, ids)
                     }
                 },
                 enabled = selectedIds.isNotEmpty(),

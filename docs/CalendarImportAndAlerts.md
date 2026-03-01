@@ -89,6 +89,17 @@ This document summarizes the calendar import and alert-related implementations i
 
 ---
 
+## Sync and refresh
+
+The app does not sync with Google directly; it reads from the system calendar provider (which syncs with Google). “Sync” here means when we re-read from the provider and reschedule alarms.
+
+- **ContentObserver** (MainActivity, when event list is visible): Registers a `ContentObserver` on `CalendarContract.Events.CONTENT_URI`. When the calendar provider notifies a change (e.g. after Google sync or edits in another app), the app triggers a full event-list reload and runs `AlertScheduler.schedule()` so the list and alarms stay in sync while the app is open.
+- **Refresh on app open/resume**: On `MainActivity.onResume()`, `requestSync()` is called: it bumps a refresh trigger (so `EventListScreen` does a full reload) and runs `AlertScheduler.schedule()`. This guarantees fresh data and alarms whenever the user opens or returns to the app.
+- **Requesting calendar sync**: Before each refresh, the app asks the system to sync calendar data for the selected calendars’ accounts (`requestCalendarSync` in **CalendarSync.kt**, using `ContentResolver.requestSync` with authority `com.android.calendar`). This can make new events from Google appear sooner. A **second refresh** is triggered 2 seconds later so events that arrive shortly after the sync request are picked up.
+- **Periodic background reschedule**: When the user has selected calendars, MainActivity enqueues a **periodic** WorkManager job (unique name `event_alert_periodic_sync`, 30-minute interval, 5-minute initial delay) that runs `AlertRescheduleWorker` (same as boot). This keeps alarms up to date when the app is closed; WorkManager is Doze-aware and does not require new permissions.
+
+---
+
 ## Permissions and manifest
 
 - **AndroidManifest.xml** (`app/src/main/AndroidManifest.xml`)

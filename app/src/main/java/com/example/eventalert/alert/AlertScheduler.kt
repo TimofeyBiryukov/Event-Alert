@@ -1,10 +1,13 @@
 package com.example.eventalert.alert
 
+import android.Manifest
 import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
+import androidx.core.content.ContextCompat
 import com.example.eventalert.data.CalendarRepository
 import com.example.eventalert.data.getScheduledAlertEventKeys
 import com.example.eventalert.data.getSelectedCalendarIds
@@ -23,6 +26,9 @@ object AlertScheduler {
 
     suspend fun schedule(context: Context) = withContext(Dispatchers.IO) {
         val app = context.applicationContext
+        if (ContextCompat.checkSelfPermission(app, Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
+            return@withContext
+        }
         val calendarIds = getSelectedCalendarIds(app)
         if (calendarIds.isEmpty()) return@withContext
 
