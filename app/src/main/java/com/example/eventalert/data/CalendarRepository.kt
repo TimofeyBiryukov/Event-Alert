@@ -53,6 +53,7 @@ class CalendarRepository(private val contentResolver: ContentResolver) {
             CalendarContract.Instances.BEGIN,
             CalendarContract.Instances.END,
             CalendarContract.Instances.CALENDAR_ID,
+            CalendarContract.Instances.ALL_DAY,
         )
         val placeholders = calendarIds.joinToString(",") { "?" }
         val selection = "${CalendarContract.Instances.CALENDAR_ID} IN ($placeholders)"
@@ -64,26 +65,89 @@ class CalendarRepository(private val contentResolver: ContentResolver) {
             selectionArgs,
             CalendarContract.Instances.BEGIN,
         ) ?: return@withContext emptyList()
-        cursor.use {
+        data class InstanceRow(
+            val eventId: Long,
+            val title: String,
+            val startTimeMillis: Long,
+            val endTimeMillis: Long?,
+            val calendarId: Long,
+            val isAllDay: Boolean,
+        )
+        val rows = cursor.use {
             val eventIdIdx = it.getColumnIndex(CalendarContract.Instances.EVENT_ID)
             val titleIdx = it.getColumnIndex(CalendarContract.Instances.TITLE)
             val beginIdx = it.getColumnIndex(CalendarContract.Instances.BEGIN)
             val endIdx = it.getColumnIndex(CalendarContract.Instances.END)
             val calIdIdx = it.getColumnIndex(CalendarContract.Instances.CALENDAR_ID)
-            if (eventIdIdx < 0 || beginIdx < 0 || calIdIdx < 0) return@use emptyList<CalendarEvent>()
+            val allDayIdx = it.getColumnIndex(CalendarContract.Instances.ALL_DAY)
+            if (eventIdIdx < 0 || beginIdx < 0 || calIdIdx < 0) return@use emptyList<InstanceRow>()
             buildList {
                 while (it.moveToNext()) {
                     add(
-                        CalendarEvent(
-                            id = it.getLong(eventIdIdx),
+                        InstanceRow(
+                            eventId = it.getLong(eventIdIdx),
                             title = it.getString(titleIdx)?.takeIf { s -> s?.isNotBlank() == true } ?: "(No title)",
                             startTimeMillis = it.getLong(beginIdx),
                             endTimeMillis = if (endIdx >= 0) it.getLong(endIdx) else null,
                             calendarId = it.getLong(calIdIdx),
+                            isAllDay = allDayIdx >= 0 && it.getInt(allDayIdx) == 1,
                         )
                     )
                 }
             }
         }
+        val reminderMap = if (rows.isEmpty()) emptyMap()
+        else queryReminderMinutesByEventId(rows.map { it.eventId }.distinct())
+        buildList {
+            for (row in rows) {
+                val minutesBefore = reminderMap[row.eventId]
+                val hasReminder = minutesBefore != null
+                if (row.isAllDay && !hasReminder) continue
+                add(
+                    CalendarEvent(
+                        id = row.eventId,
+                        title = row.title,
+                        startTimeMillis = row.startTimeMillis,
+                        endTimeMillis = row.endTimeMillis,
+                        calendarId = row.calendarId,
+                        isAllDay = row.isAllDay,
+                        hasReminder = hasReminder,
+                        reminderMinutesBefore = minutesBefore,
+                    )
+                )
+            }
+        }
+    }
+
+    /** Returns map of eventId -> minutes before event (uses earliest reminder per event for display). */
+    private fun queryReminderMinutesByEventId(eventIds: List<Long>): Map<Long, Int> {
+        if (eventIds.isEmpty()) return emptyMap()
+        val batchSize = 100
+        val result = mutableMapOf<Long, Int>()
+        for (chunk in eventIds.chunked(batchSize)) {
+            val placeholders = chunk.joinToString(",") { "?" }
+            val selection = "${CalendarContract.Reminders.EVENT_ID} IN ($placeholders)"
+            val selectionArgs = chunk.map { it.toString() }.toTypedArray()
+            val cursor = contentResolver.query(
+                CalendarContract.Reminders.CONTENT_URI,
+                arrayOf(CalendarContract.Reminders.EVENT_ID, CalendarContract.Reminders.MINUTES),
+                selection,
+                selectionArgs,
+                null,
+            ) ?: continue
+            cursor.use {
+                val eventIdIdx = it.getColumnIndex(CalendarContract.Reminders.EVENT_ID)
+                val minutesIdx = it.getColumnIndex(CalendarContract.Reminders.MINUTES)
+                if (eventIdIdx < 0 || minutesIdx < 0) return@use
+                while (it.moveToNext()) {
+                    val eid = it.getLong(eventIdIdx)
+                    val minutes = it.getInt(minutesIdx)
+                    if (minutes >= 0) {
+                        result[eid] = minOf(result[eid] ?: Int.MAX_VALUE, minutes)
+                    }
+                }
+            }
+        }
+        return result.filterValues { it != Int.MAX_VALUE }
     }
 }

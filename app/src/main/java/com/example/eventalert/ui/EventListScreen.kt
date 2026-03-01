@@ -39,18 +39,23 @@ private val dateFormat = SimpleDateFormat("EEE h:mm a", Locale.getDefault())
 
 private fun formatEventSubtitle(event: CalendarEvent): String {
     return try {
-        val fullDateFormat = SimpleDateFormat("EEE, MMM d, yyyy h:mm a", Locale.getDefault())
-        val shortTimeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
-
-        val startDate = Date(event.startTimeMillis)
-        val alertMillis = event.startTimeMillis - DEFAULT_ALERT_MINUTES * 60 * 1000
-        val alertDate = Date(alertMillis)
-
-        val dateStr = SimpleDateFormat("EEE, MMM d, yyyy", Locale.getDefault()).format(startDate)
-        val startTimeStr = shortTimeFormat.format(startDate)
-        val alertTimeStr = shortTimeFormat.format(alertDate)
-
-        "$dateStr · $startTimeStr · Alert $alertTimeStr"
+        val dateStr = SimpleDateFormat("EEE, MMM d, yyyy", Locale.getDefault()).format(Date(event.startTimeMillis))
+        if (event.isAllDay) {
+            val alertStr = event.reminderMinutesBefore?.let { min ->
+                val alertMillis = event.startTimeMillis - min * 60L * 1000
+                val alertDate = Date(alertMillis)
+                SimpleDateFormat("EEE, MMM d, h:mm a", Locale.getDefault()).format(alertDate)
+            } ?: "Uses calendar reminder"
+            "All day · $dateStr · Alert $alertStr"
+        } else {
+            val shortTimeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
+            val startDate = Date(event.startTimeMillis)
+            val alertMillis = event.startTimeMillis - DEFAULT_ALERT_MINUTES * 60 * 1000
+            val alertDate = Date(alertMillis)
+            val startTimeStr = shortTimeFormat.format(startDate)
+            val alertTimeStr = shortTimeFormat.format(alertDate)
+            "$dateStr · $startTimeStr · Alert $alertTimeStr"
+        }
     } catch (e: Exception) {
         "Event · Alert"
     }
