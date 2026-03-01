@@ -9,14 +9,11 @@ import kotlinx.coroutines.withContext
 class CalendarRepository(private val contentResolver: ContentResolver) {
 
     suspend fun getCalendars(): List<CalendarItem> = withContext(Dispatchers.IO) {
-        val projection = arrayOf(
-            CalendarContract.Calendars._ID,
-            CalendarContract.Calendars.CALENDAR_DISPLAY_NAME,
-            CalendarContract.Calendars.CALENDAR_COLOR,
-        )
+        // Use null projection for maximum compatibility: some providers (e.g. on emulator
+        // or AOSP builds) can return an empty cursor when requesting columns they don't support.
         val cursor = contentResolver.query(
             CalendarContract.Calendars.CONTENT_URI,
-            projection,
+            null,
             null,
             null,
             CalendarContract.Calendars.CALENDAR_DISPLAY_NAME,

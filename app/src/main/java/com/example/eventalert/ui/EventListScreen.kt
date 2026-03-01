@@ -32,15 +32,19 @@ private const val ONE_YEAR_MS = 365L * 24 * 60 * 60 * 1000
 private val dateFormat = SimpleDateFormat("EEE h:mm a", Locale.getDefault())
 
 private fun formatEventSubtitle(event: CalendarEvent): String {
-    val startStr = dateFormat.format(Date(event.startTimeMillis))
-    val alertMillis = event.startTimeMillis - DEFAULT_ALERT_MINUTES * 60 * 1000
-    val alertStr = dateFormat.format(Date(alertMillis))
-    return "$startStr · Alert $alertStr"
+    return try {
+        val startStr = dateFormat.format(Date(event.startTimeMillis))
+        val alertMillis = event.startTimeMillis - DEFAULT_ALERT_MINUTES * 60 * 1000
+        val alertStr = dateFormat.format(Date(alertMillis))
+        "$startStr · Alert $alertStr"
+    } catch (e: Exception) {
+        "Event · Alert"
+    }
 }
 
-private fun eventToItemId(event: CalendarEvent): Long {
-    return event.calendarId * 1_000_000_000_000L + (event.startTimeMillis / 1000)
-}
+/** Unique key per instance; avoids Long overflow and duplicate keys (e.g. recurring events). */
+private fun eventKey(event: CalendarEvent): String =
+    "${event.calendarId}_${event.id}_${event.startTimeMillis}"
 
 @Composable
 fun EventListScreen(
@@ -50,7 +54,7 @@ fun EventListScreen(
 ) {
     var loading by remember { mutableStateOf<Boolean>(true) }
     var events by remember { mutableStateOf<List<CalendarEvent>>(emptyList()) }
-    val toggledOn = remember { mutableStateMapOf<Long, Boolean>() }
+    val toggledOn = remember { mutableStateMapOf<String, Boolean>() }
 
     LaunchedEffect(calendarIds) {
         loading = true
@@ -95,9 +99,9 @@ fun EventListScreen(
             ) {
                 items(
                     items = events,
-                    key = { ev -> eventToItemId(ev) },
+                    key = { ev -> eventKey(ev) },
                 ) { event ->
-                    val itemId = eventToItemId(event)
+                    val key = eventKey(event)
                     ListItem(
                         headlineContent = { Text(text = event.title) },
                         supportingContent = {
@@ -105,8 +109,8 @@ fun EventListScreen(
                         },
                         trailingContent = {
                             Switch(
-                                checked = toggledOn[itemId] ?: true,
-                                onCheckedChange = { checked -> toggledOn[itemId] = checked },
+                                checked = toggledOn[key] ?: true,
+                                onCheckedChange = { checked -> toggledOn[key] = checked },
                             )
                         },
                     )
