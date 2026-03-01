@@ -25,9 +25,9 @@ This document summarizes the calendar import and alert-related implementations i
 ## Persistence
 
 - **SelectedCalendarsPreferences.kt** (`app/src/main/java/com/example/eventalert/data/SelectedCalendarsPreferences.kt`)
-  - DataStore Preferences for selected calendar IDs.
-  - Exposes `selectedCalendarIdsFlow` and `setSelectedCalendarIds`.
-  - Used for wizard completion and event list calendar filter.
+  - DataStore Preferences for selected calendar IDs and scheduled alert event keys.
+  - Exposes `selectedCalendarIdsFlow`, `setSelectedCalendarIds`, `getSelectedCalendarIds`; `getScheduledAlertEventKeys`, `setScheduledAlertEventKeys` (for AlertScheduler).
+  - Used for wizard completion, event list calendar filter, and alarm reschedule bookkeeping.
 
 ---
 
@@ -49,7 +49,7 @@ This document summarizes the calendar import and alert-related implementations i
 ## Event list and pagination
 
 - **EventListScreen.kt** (`app/src/main/java/com/example/eventalert/ui/EventListScreen.kt`)
-  - Time-window pagination: initial load one month (`EVENT_WINDOW_MS`), load more when near bottom (`snapshotFlow` + `LazyListState`).
+  - Time-window pagination: initial load one month (`EVENT_WINDOW_MS`), load more when near bottom (`snapshotFlow` + `LazyListState`). Constants and `eventKey` / `alertTimeMillis` come from **AlertUtils.kt**.
   - Cap at `MAX_IMPORT_WINDOW_MS` (e.g. one year) so the list does not grow indefinitely with recurring events.
   - Events merged and deduplicated by `eventKey(calendarId, id, startTimeMillis)` to avoid duplicate LazyColumn keys.
   - Bottom loading indicator when `loadingMore`.
@@ -59,16 +59,38 @@ This document summarizes the calendar import and alert-related implementations i
 ## Display and all-day handling
 
 - **Timed events**
-  - Subtitle = date + start time + "Alert &lt;time&gt;" using `DEFAULT_ALERT_MINUTES` (10).
+  - Subtitle = date + start time + "Alert &lt;time&gt;" using `DEFAULT_ALERT_MINUTES` (10) from **AlertUtils.kt**.
 
 - **All-day events**
   - Subtitle = "All day · &lt;date&gt; · Alert &lt;time&gt;".
-  - Alert time is computed from **start of event day in local timezone** minus `reminderMinutesBefore` (not raw UTC), to avoid wrong local time (e.g. 4:50 AM in UTC+x).
+  - Alert time is computed from **start of event day in local timezone** minus `reminderMinutesBefore` (not raw UTC), to avoid wrong local time (e.g. 4:50 AM in UTC+x). Same logic in **AlertUtils.alertTimeMillis()** for scheduling.
   - Multiple reminders per event: only the **closest** (smallest minutes) is stored and shown.
+
+---
+
+## Full-screen reminders
+
+- **AlertUtils.kt** (`app/src/main/java/com/example/eventalert/alert/AlertUtils.kt`)
+  - Shared constants: `DEFAULT_ALERT_MINUTES` (10), `EVENT_WINDOW_MS`, `MAX_IMPORT_WINDOW_MS`.
+  - `eventKey(event)`: unique key per instance. `alertTimeMillis(event)`: when the alert should fire (timed: start − 10 min; all-day: start of day local − reminderMinutesBefore).
+
+- **AlertScheduler** (`alert/AlertScheduler.kt`)
+  - Fetches events in the same window as the event list (via CalendarRepository), computes alert time per event, cancels previously scheduled alarms, and sets new ones with `AlarmManager.setAlarmClock()` so they fire when the app is closed. Stores scheduled event keys in DataStore (`getScheduledAlertEventKeys` / `setScheduledAlertEventKeys` in SelectedCalendarsPreferences).
+
+- **AlarmReceiver** (`alert/AlarmReceiver.kt`)
+  - Receives the alarm; **starts ReminderActivity directly first** (with WakeLock and show-when-locked/turn-screen-on flags) so the full-screen alert appears immediately (Samsung-style). Then posts a high-priority notification with full-screen intent as shade entry/fallback. Notification channel "Event reminders" (IMPORTANCE_HIGH).
+
+- **ReminderActivity** (`ui/ReminderActivity.kt`)
+  - Full-screen UI: event title, date/time, Dismiss button. Launched by the full-screen intent. On dismiss: cancels the notification and finishes. Uses `setShowWhenLocked(true)` / `setTurnScreenOn(true)` in code for lock-screen display.
+
+- **Reschedule**
+  - **BootReceiver** (`alert/BootReceiver.kt`): on `BOOT_COMPLETED`, enqueues a one-off **AlertRescheduleWorker** (WorkManager) that runs `AlertScheduler.schedule()`.
+  - **MainActivity**: when the event list is shown (selected calendar IDs non-empty), calls `AlertScheduler.schedule(applicationContext)` so alerts are scheduled after wizard complete or when opening the app.
 
 ---
 
 ## Permissions and manifest
 
 - **AndroidManifest.xml** (`app/src/main/AndroidManifest.xml`)
-  - READ_CALENDAR declared; requested on wizard before loading calendars.
+  - READ_CALENDAR; POST_NOTIFICATIONS; USE_FULL_SCREEN_INTENT; SCHEDULE_EXACT_ALARM; RECEIVE_BOOT_COMPLETED; WAKE_LOCK.
+  - READ_CALENDAR requested on wizard. POST_NOTIFICATIONS and USE_FULL_SCREEN_INTENT requested when event list is shown (MainActivity).

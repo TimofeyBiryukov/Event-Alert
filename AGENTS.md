@@ -1,3 +1,8 @@
+---
+description: 
+alwaysApply: true
+---
+
 # Event Alert – Agent Guide
 
 This document guides AI coding agents and human contributors who use them when working on the Event Alert Android app.  

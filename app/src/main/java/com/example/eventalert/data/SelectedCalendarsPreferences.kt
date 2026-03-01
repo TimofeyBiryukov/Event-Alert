@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.map
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "selected_calendars")
 
 private val SELECTED_CALENDAR_IDS_KEY = stringSetPreferencesKey("selected_calendar_ids")
+private val SCHEDULED_ALERT_EVENT_KEYS_KEY = stringSetPreferencesKey("scheduled_alert_event_keys")
 
 fun selectedCalendarIdsFlow(context: Context): Flow<Set<Long>> =
     context.dataStore.data.map { prefs ->
@@ -35,3 +36,14 @@ suspend fun getSelectedCalendarIds(context: Context): Set<Long> =
             ?.toSet()
             ?: emptySet()
     }.first()
+
+suspend fun getScheduledAlertEventKeys(context: Context): Set<String> =
+    context.dataStore.data.map { prefs ->
+        prefs[SCHEDULED_ALERT_EVENT_KEYS_KEY] ?: emptySet()
+    }.first()
+
+suspend fun setScheduledAlertEventKeys(context: Context, keys: Set<String>) {
+    context.dataStore.edit { prefs ->
+        prefs[SCHEDULED_ALERT_EVENT_KEYS_KEY] = keys
+    }
+}

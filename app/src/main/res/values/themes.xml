@@ -2,4 +2,7 @@
 <resources>
 
     <style name="Theme.EventAlert" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- showWhenLocked / turnScreenOn are set in code (ReminderActivity) for API 27+ -->
+    <style name="Theme.EventAlert.Reminder" parent="Theme.EventAlert" />
 </resources>

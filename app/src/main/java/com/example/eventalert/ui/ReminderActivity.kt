@@ -1,0 +1,94 @@
+package com.example.eventalert.ui
+
+import android.app.NotificationManager
+import android.content.Context
+import android.os.Build
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import com.example.eventalert.alert.AlarmReceiver
+import com.example.eventalert.ui.theme.EventAlertTheme
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+/**
+ * Full-screen reminder shown when an event alert fires. Launched via full-screen intent
+ * from the notification so it can appear on the lock screen. Minimal UI: title, time, Dismiss.
+ */
+class ReminderActivity : ComponentActivity() {
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true)
+            setTurnScreenOn(true)
+        }
+        enableEdgeToEdge()
+        setContent {
+            EventAlertTheme {
+                val ctx = LocalContext.current
+                val title = remember { intent?.getStringExtra(AlarmReceiver.EXTRA_TITLE).orEmpty() }
+                val startTimeMillis: Long = remember { intent?.getLongExtra(AlarmReceiver.EXTRA_START_TIME_MILLIS, 0L) ?: 0L }
+                val isAllDay: Boolean = remember { intent?.getBooleanExtra(AlarmReceiver.EXTRA_IS_ALL_DAY, false) ?: false }
+                val notificationId: Int = remember { intent?.getIntExtra(EXTRA_NOTIFICATION_ID, 0) ?: 0 }
+
+                val timeText = remember(startTimeMillis, isAllDay) {
+                    if (startTimeMillis == 0L) ""
+                    else if (isAllDay) {
+                        SimpleDateFormat("EEE, MMM d, yyyy", Locale.getDefault()).format(Date(startTimeMillis))
+                    } else {
+                        SimpleDateFormat("EEE, MMM d, h:mm a", Locale.getDefault()).format(Date(startTimeMillis))
+                    }
+                }
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.headlineMedium,
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = timeText,
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    Spacer(modifier = Modifier.height(32.dp))
+                    Button(
+                        onClick = {
+                            (ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+                                .cancel(notificationId)
+                            finish()
+                        },
+                    ) {
+                        Text(ctx.getString(com.example.eventalert.R.string.reminder_dismiss))
+                    }
+                }
+            }
+        }
+    }
+
+    companion object {
+        const val EXTRA_NOTIFICATION_ID = "notificationId"
+    }
+}
