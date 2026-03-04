@@ -132,15 +132,15 @@ object AlertScheduler {
     }
 
     /**
-     * Schedule a single snoozed alert for an already-fired event, to fire again in 5 minutes.
+     * Schedule a single snoozed alert for an already-fired event, to fire again after [delayMillis].
      * Uses a distinct PendingIntent request code so regular rescheduling does not cancel it.
      */
-    fun scheduleSnooze(context: Context, extras: Bundle) {
+    fun scheduleSnooze(context: Context, extras: Bundle, delayMillis: Long) {
         val app = context.applicationContext
         val eventKey = extras.getString(AlarmReceiver.EXTRA_EVENT_KEY) ?: return
 
         val alarmManager = app.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val triggerAt = System.currentTimeMillis() + 5 * 60 * 1000L
+        val triggerAt = System.currentTimeMillis() + delayMillis
 
         val intent = Intent(app, AlarmReceiver::class.java).apply {
             putExtras(extras)
@@ -187,5 +187,12 @@ object AlertScheduler {
                 pending,
             )
         }
+    }
+
+    /**
+     * Convenience overload that schedules a snooze for 5 minutes.
+     */
+    fun scheduleSnooze(context: Context, extras: Bundle) {
+        scheduleSnooze(context, extras, 5 * 60 * 1000L)
     }
 }

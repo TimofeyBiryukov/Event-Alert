@@ -2,5 +2,9 @@
     <string name="app_name">Event Alert</string>
     <string name="notification_channel_reminders">Event reminders</string>
     <string name="reminder_dismiss">Dismiss</string>
-    <string name="reminder_snooze">Snooze (5 min)</string>
+    <string name="reminder_snooze">Snooze</string>
+    <string name="reminder_snooze_for">Snooze for</string>
+    <string name="reminder_snooze_5m">5 minutes</string>
+    <string name="reminder_snooze_30m">30 minutes</string>
+    <string name="reminder_snooze_60m">1 hour</string>
 </resources>

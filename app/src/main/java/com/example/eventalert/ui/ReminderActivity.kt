@@ -9,6 +9,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,6 +17,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
@@ -72,6 +75,18 @@ class ReminderActivity : ComponentActivity() {
                     }
                 }
 
+                data class SnoozeOption(val minutes: Int, val label: String)
+
+                val snoozeOptions = remember {
+                    listOf(
+                        SnoozeOption(5, ctx.getString(com.example.eventalert.R.string.reminder_snooze_5m)),
+                        SnoozeOption(30, ctx.getString(com.example.eventalert.R.string.reminder_snooze_30m)),
+                        SnoozeOption(60, ctx.getString(com.example.eventalert.R.string.reminder_snooze_60m)),
+                    )
+                }
+                var snoozeExpanded by remember { mutableStateOf(false) }
+                var selectedSnoozeOption by remember { mutableStateOf(snoozeOptions.first()) }
+
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -89,6 +104,33 @@ class ReminderActivity : ComponentActivity() {
                         style = MaterialTheme.typography.bodyLarge,
                     )
                     Spacer(modifier = Modifier.height(32.dp))
+                    Text(
+                        text = ctx.getString(com.example.eventalert.R.string.reminder_snooze_for),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Box {
+                        Button(
+                            onClick = { snoozeExpanded = true },
+                        ) {
+                            Text(text = selectedSnoozeOption.label)
+                        }
+                        DropdownMenu(
+                            expanded = snoozeExpanded,
+                            onDismissRequest = { snoozeExpanded = false },
+                        ) {
+                            snoozeOptions.forEach { option ->
+                                DropdownMenuItem(
+                                    text = { Text(option.label) },
+                                    onClick = {
+                                        selectedSnoozeOption = option
+                                        snoozeExpanded = false
+                                    },
+                                )
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -115,7 +157,8 @@ class ReminderActivity : ComponentActivity() {
                         }
                         Button(
                             onClick = {
-                                val snoozeUntil = System.currentTimeMillis() + 5 * 60 * 1000L
+                                val snoozeMinutes = selectedSnoozeOption.minutes
+                                val snoozeUntil = System.currentTimeMillis() + snoozeMinutes * 60 * 1000L
                                 if (eventKey.isNotEmpty()) {
                                     scope.launch {
                                         // Persist snooze state so the list can show \"Snoozed\" and keep the event.
@@ -131,7 +174,7 @@ class ReminderActivity : ComponentActivity() {
                                     .cancel(notificationId)
                                 val extras = intent?.extras
                                 if (extras != null) {
-                                    AlertScheduler.scheduleSnooze(appContext, extras)
+                                    AlertScheduler.scheduleSnooze(appContext, extras, snoozeMinutes * 60 * 1000L)
                                 }
                                 finish()
                             },
