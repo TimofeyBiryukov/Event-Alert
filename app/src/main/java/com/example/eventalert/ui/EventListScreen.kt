@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.eventalert.alert.EVENT_WINDOW_MS
 import com.example.eventalert.alert.MAX_IMPORT_WINDOW_MS
@@ -30,16 +31,18 @@ import com.example.eventalert.alert.alertTimeMillis
 import com.example.eventalert.alert.eventKey
 import com.example.eventalert.data.CalendarEvent
 import com.example.eventalert.data.CalendarRepository
+import com.example.eventalert.data.getDismissedAlertEventKeys
+import com.example.eventalert.data.getSnoozedAlerts
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 private const val LOAD_MORE_THRESHOLD = 5
 
-private fun formatEventSubtitle(event: CalendarEvent): String {
+private fun formatEventSubtitle(event: CalendarEvent, snoozedUntil: Long?): String {
     return try {
         val dateStr = SimpleDateFormat("EEE, MMM d, yyyy", Locale.getDefault()).format(Date(event.startTimeMillis))
-        if (event.isAllDay) {
+        val base = if (event.isAllDay) {
             val alertStr = event.reminderMinutesBefore?.let {
                 SimpleDateFormat("EEE, MMM d, h:mm a", Locale.getDefault()).format(Date(alertTimeMillis(event)))
             } ?: "Uses calendar reminder"
@@ -49,6 +52,14 @@ private fun formatEventSubtitle(event: CalendarEvent): String {
             val startTimeStr = shortTimeFormat.format(Date(event.startTimeMillis))
             val alertTimeStr = shortTimeFormat.format(Date(alertTimeMillis(event)))
             "$dateStr · $startTimeStr · Alert $alertTimeStr"
+        }
+        return if (snoozedUntil != null && snoozedUntil > System.currentTimeMillis()) {
+            val shortTimeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
+            val snoozeStr = shortTimeFormat.format(Date(snoozedUntil))
+            "$base · Snoozed until $snoozeStr"
+        }
+ else {
+            base
         }
     } catch (e: Exception) {
         "Event · Alert"
@@ -64,12 +75,15 @@ fun EventListScreen(
     onRefreshRequested: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
     var loading by remember { mutableStateOf<Boolean>(true) }
     var events by remember { mutableStateOf<List<CalendarEvent>>(emptyList()) }
     var loadedEndMillis by remember { mutableStateOf(0L) }
     var loadingMore by remember { mutableStateOf<Boolean>(false) }
     var hasMore by remember { mutableStateOf(true) }
     var isRefreshing by remember { mutableStateOf(false) }
+    var snoozedAlerts by remember { mutableStateOf<Map<String, Long>>(emptyMap()) }
+    var dismissedEventKeys by remember { mutableStateOf<Set<String>>(emptySet()) }
     val toggledOn = remember { mutableStateMapOf<String, Boolean>() }
     val listState = rememberLazyListState()
 
@@ -82,6 +96,19 @@ fun EventListScreen(
         }
         val now = System.currentTimeMillis()
         val maxEnd = now + MAX_IMPORT_WINDOW_MS
+        val snoozed = try {
+            getSnoozedAlerts(context.applicationContext)
+        } catch (e: Exception) {
+            emptyMap()
+        }
+        val dismissed = try {
+            getDismissedAlertEventKeys(context.applicationContext)
+        } catch (e: Exception) {
+            emptySet()
+        }
+        snoozedAlerts = snoozed
+        dismissedEventKeys = dismissed
+
         val newEvents = try {
             repository.getEvents(
                 calendarIds = calendarIds.toList(),
@@ -91,7 +118,18 @@ fun EventListScreen(
         } catch (e: Exception) {
             emptyList()
         }
-        events = newEvents.filter { alertTimeMillis(it) > now }
+        events = newEvents.filter { event ->
+            val key = eventKey(event)
+            if (dismissed.contains(key)) {
+                false
+            } else {
+                val snoozedUntil = snoozed[key]
+                when {
+                    snoozedUntil != null && snoozedUntil > now -> true
+                    else -> alertTimeMillis(event) > now
+                }
+            }
+        }
         loadedEndMillis = minOf(now + EVENT_WINDOW_MS, maxEnd)
         hasMore = loadedEndMillis < maxEnd
         loading = false
@@ -133,8 +171,32 @@ fun EventListScreen(
             }
             val existingKeys = events.mapTo(mutableSetOf()) { eventKey(it) }
             val newEvents = batch.filter { eventKey(it) !in existingKeys }
-            val filteredNew = newEvents.filter { alertTimeMillis(it) > now }
-            events = (events + filteredNew).filter { alertTimeMillis(it) > now }
+            val snoozedNow = snoozedAlerts
+            val dismissedNow = dismissedEventKeys
+            val filteredNew = newEvents.filter { event ->
+                val key = eventKey(event)
+                if (dismissedNow.contains(key)) {
+                    false
+                } else {
+                    val snoozedUntil = snoozedNow[key]
+                    when {
+                        snoozedUntil != null && snoozedUntil > now -> true
+                        else -> alertTimeMillis(event) > now
+                    }
+                }
+            }
+            events = (events + filteredNew).filter { event ->
+                val key = eventKey(event)
+                if (dismissedNow.contains(key)) {
+                    false
+                } else {
+                    val snoozedUntil = snoozedNow[key]
+                    when {
+                        snoozedUntil != null && snoozedUntil > now -> true
+                        else -> alertTimeMillis(event) > now
+                    }
+                }
+            }
             loadedEndMillis = endForQuery
             if (batch.isEmpty() || loadedEndMillis >= maxEnd) hasMore = false
             loadingMore = false
@@ -185,10 +247,11 @@ fun EventListScreen(
                                     key = { ev -> eventKey(ev) },
                                 ) { event ->
                                     val key = eventKey(event)
+                                    val snoozedUntil = snoozedAlerts[key]
                                     ListItem(
                                         headlineContent = { Text(text = event.title) },
                                         supportingContent = {
-                                            Text(text = formatEventSubtitle(event))
+                                            Text(text = formatEventSubtitle(event, snoozedUntil))
                                         },
                                         trailingContent = {
                                             Switch(

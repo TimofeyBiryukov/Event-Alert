@@ -188,7 +188,11 @@ class MainActivity : ComponentActivity() {
                                     activity.refreshEventList()
                                 }
                             }
-                            val filter = IntentFilter(AlarmReceiver.ACTION_ALERT_FIRED)
+                            val filter = IntentFilter().apply {
+                                addAction(AlarmReceiver.ACTION_ALERT_SNOOZED)
+                                addAction(AlarmReceiver.ACTION_ALERT_DISMISSED)
+                                addAction(AlarmReceiver.ACTION_ALERT_FIRED)
+                            }
                             registerReceiver(activity, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
                             onDispose {
                                 activity.unregisterReceiver(receiver)

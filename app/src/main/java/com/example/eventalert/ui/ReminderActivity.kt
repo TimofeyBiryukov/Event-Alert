@@ -2,6 +2,7 @@ package com.example.eventalert.ui
 
 import android.app.NotificationManager
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -9,6 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -16,13 +18,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.eventalert.alert.AlarmReceiver
+import com.example.eventalert.alert.AlertScheduler
+import com.example.eventalert.data.addDismissedAlertEventKey
+import com.example.eventalert.data.clearSnoozedAlert
 import com.example.eventalert.ui.theme.EventAlertTheme
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -43,6 +53,11 @@ class ReminderActivity : ComponentActivity() {
         setContent {
             EventAlertTheme {
                 val ctx = LocalContext.current
+                val appContext = ctx.applicationContext
+                val scope = rememberCoroutineScope()
+                val eventKey by remember {
+                    mutableStateOf(intent?.getStringExtra(AlarmReceiver.EXTRA_EVENT_KEY).orEmpty())
+                }
                 val title = remember { intent?.getStringExtra(AlarmReceiver.EXTRA_TITLE).orEmpty() }
                 val startTimeMillis: Long = remember { intent?.getLongExtra(AlarmReceiver.EXTRA_START_TIME_MILLIS, 0L) ?: 0L }
                 val isAllDay: Boolean = remember { intent?.getBooleanExtra(AlarmReceiver.EXTRA_IS_ALL_DAY, false) ?: false }
@@ -74,14 +89,55 @@ class ReminderActivity : ComponentActivity() {
                         style = MaterialTheme.typography.bodyLarge,
                     )
                     Spacer(modifier = Modifier.height(32.dp))
-                    Button(
-                        onClick = {
-                            (ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
-                                .cancel(notificationId)
-                            finish()
-                        },
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(ctx.getString(com.example.eventalert.R.string.reminder_dismiss))
+                        Button(
+                            onClick = {
+                                if (eventKey.isNotEmpty()) {
+                                    scope.launch {
+                                        clearSnoozedAlert(appContext, eventKey)
+                                        addDismissedAlertEventKey(appContext, eventKey)
+                                    }
+                                    ctx.sendBroadcast(
+                                        Intent(AlarmReceiver.ACTION_ALERT_DISMISSED)
+                                            .setPackage(ctx.packageName)
+                                            .putExtra(AlarmReceiver.EXTRA_EVENT_KEY, eventKey),
+                                    )
+                                }
+                                (ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+                                    .cancel(notificationId)
+                                finish()
+                            },
+                        ) {
+                            Text(ctx.getString(com.example.eventalert.R.string.reminder_dismiss))
+                        }
+                        Button(
+                            onClick = {
+                                val snoozeUntil = System.currentTimeMillis() + 5 * 60 * 1000L
+                                if (eventKey.isNotEmpty()) {
+                                    scope.launch {
+                                        // Persist snooze state so the list can show \"Snoozed\" and keep the event.
+                                        com.example.eventalert.data.putSnoozedAlert(appContext, eventKey, snoozeUntil)
+                                    }
+                                    ctx.sendBroadcast(
+                                        Intent(AlarmReceiver.ACTION_ALERT_SNOOZED)
+                                            .setPackage(ctx.packageName)
+                                            .putExtra(AlarmReceiver.EXTRA_EVENT_KEY, eventKey),
+                                    )
+                                }
+                                (ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+                                    .cancel(notificationId)
+                                val extras = intent?.extras
+                                if (extras != null) {
+                                    AlertScheduler.scheduleSnooze(appContext, extras)
+                                }
+                                finish()
+                            },
+                        ) {
+                            Text(ctx.getString(com.example.eventalert.R.string.reminder_snooze))
+                        }
                     }
                 }
             }

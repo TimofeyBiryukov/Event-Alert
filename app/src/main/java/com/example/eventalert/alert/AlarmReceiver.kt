@@ -93,14 +93,13 @@ class AlarmReceiver : BroadcastReceiver() {
         try {
             NotificationManagerCompat.from(context).notify(notificationIdForEventKey(eventKey), notification)
         } catch (_: SecurityException) { /* permission not granted */ }
-
-        // Notify any visible event list so it can remove this event immediately.
-        context.sendBroadcast(Intent(ACTION_ALERT_FIRED).setPackage(context.packageName))
     }
 
     companion object {
         /** Broadcast action when an alert has fired; MainActivity refreshes the event list on receive. */
         const val ACTION_ALERT_FIRED = "com.example.eventalert.ALERT_FIRED"
+        const val ACTION_ALERT_SNOOZED = "com.example.eventalert.ALERT_SNOOZED"
+        const val ACTION_ALERT_DISMISSED = "com.example.eventalert.ALERT_DISMISSED"
 
         const val EXTRA_EVENT_KEY = "eventKey"
         const val EXTRA_TITLE = "title"

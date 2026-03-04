@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Bundle
 import androidx.core.content.ContextCompat
 import com.example.eventalert.data.CalendarRepository
 import com.example.eventalert.data.getScheduledAlertEventKeys
@@ -128,5 +129,63 @@ object AlertScheduler {
         }
 
         setScheduledAlertEventKeys(app, newKeys)
+    }
+
+    /**
+     * Schedule a single snoozed alert for an already-fired event, to fire again in 5 minutes.
+     * Uses a distinct PendingIntent request code so regular rescheduling does not cancel it.
+     */
+    fun scheduleSnooze(context: Context, extras: Bundle) {
+        val app = context.applicationContext
+        val eventKey = extras.getString(AlarmReceiver.EXTRA_EVENT_KEY) ?: return
+
+        val alarmManager = app.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val triggerAt = System.currentTimeMillis() + 5 * 60 * 1000L
+
+        val intent = Intent(app, AlarmReceiver::class.java).apply {
+            putExtras(extras)
+        }
+
+        val snoozeRequestCode = ("snooze_$eventKey").hashCode()
+        val pending = PendingIntent.getBroadcast(
+            app,
+            snoozeRequestCode,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
+        val canScheduleExact = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            alarmManager.canScheduleExactAlarms()
+        } else {
+            true
+        }
+
+        if (canScheduleExact) {
+            val showIntent = PendingIntent.getActivity(
+                app,
+                0,
+                Intent(app, com.example.eventalert.MainActivity::class.java),
+                PendingIntent.FLAG_IMMUTABLE,
+            )
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                alarmManager.setAlarmClock(
+                    AlarmManager.AlarmClockInfo(triggerAt, showIntent),
+                    pending,
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                alarmManager.setAlarmClock(
+                    AlarmManager.AlarmClockInfo(triggerAt, showIntent),
+                    pending,
+                )
+            }
+        } else {
+            alarmManager.setWindow(
+                AlarmManager.RTC_WAKEUP,
+                triggerAt,
+                60_000L,
+                pending,
+            )
+        }
     }
 }
