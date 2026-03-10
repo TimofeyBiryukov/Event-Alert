@@ -60,11 +60,14 @@ import com.example.eventalert.alert.AlertRescheduleWorker
 import com.example.eventalert.alert.AlertScheduler
 import com.example.eventalert.data.CalendarRepository
 import com.example.eventalert.data.DateFormatOption
+import com.example.eventalert.data.TimeFormatOption
 import com.example.eventalert.data.getDateFormatOption
 import com.example.eventalert.data.getSelectedCalendarIds
 import com.example.eventalert.data.requestCalendarSync
 import com.example.eventalert.data.setDateFormatOption
 import com.example.eventalert.data.setSelectedCalendarIds
+import com.example.eventalert.data.getTimeFormatOption
+import com.example.eventalert.data.setTimeFormatOption
 import com.example.eventalert.ui.ReminderActivity
 import com.example.eventalert.ui.SettingsScreen
 import kotlinx.coroutines.Dispatchers
@@ -147,10 +150,13 @@ class MainActivity : ComponentActivity() {
                 }
 
                 var dateFormatOption by remember { mutableStateOf(DateFormatOption.SYSTEM_DEFAULT) }
+                var timeFormatOption by remember { mutableStateOf(TimeFormatOption.SYSTEM_DEFAULT) }
                 var showDateFormatDialog by remember { mutableStateOf(false) }
+                var showTimeFormatDialog by remember { mutableStateOf(false) }
 
                 LaunchedEffect(Unit) {
                     dateFormatOption = getDateFormatOption(context)
+                    timeFormatOption = getTimeFormatOption(context)
                 }
 
                 val permissionLauncher = rememberLauncherForActivityResult(
@@ -295,8 +301,14 @@ class MainActivity : ComponentActivity() {
                                     DateFormatOption.MONTH_DAY_YEAR -> "MM/DD/YYYY"
                                     DateFormatOption.YEAR_MONTH_DAY -> "YYYY-MM-DD"
                                 },
+                                currentTimeFormatLabel = when (timeFormatOption) {
+                                    TimeFormatOption.SYSTEM_DEFAULT -> "System default"
+                                    TimeFormatOption.HOUR_12 -> "12-hour (AM/PM)"
+                                    TimeFormatOption.HOUR_24 -> "24-hour"
+                                },
                                 currentCalendarLabel = "Tap to change calendars",
                                 onSelectDateFormat = { showDateFormatDialog = true },
+                                onSelectTimeFormat = { showTimeFormatDialog = true },
                                 onSelectCalendar = {
                                     showingSettings = false
                                     // Show the calendar wizard without clearing the existing selection.
@@ -371,6 +383,57 @@ class MainActivity : ComponentActivity() {
                                 },
                                 dismissButton = {
                                     TextButton(onClick = { showDateFormatDialog = false }) {
+                                        Text("Cancel")
+                                    }
+                                },
+                            )
+                        }
+                        if (showTimeFormatDialog) {
+                            AlertDialog(
+                                onDismissRequest = { showTimeFormatDialog = false },
+                                title = { Text(text = "Time format") },
+                                text = {
+                                    Column {
+                                        TimeFormatOption.values().forEach { option ->
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(vertical = 4.dp)
+                                                    .clickable {
+                                                        timeFormatOption = option
+                                                    },
+                                            ) {
+                                                RadioButton(
+                                                    selected = option == timeFormatOption,
+                                                    onClick = { timeFormatOption = option },
+                                                )
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text(
+                                                    text = when (option) {
+                                                        TimeFormatOption.SYSTEM_DEFAULT -> "System default"
+                                                        TimeFormatOption.HOUR_12 -> "12-hour (AM/PM)"
+                                                        TimeFormatOption.HOUR_24 -> "24-hour"
+                                                    },
+                                                )
+                                            }
+                                        }
+                                    }
+                                },
+                                confirmButton = {
+                                    TextButton(
+                                        onClick = {
+                                            showTimeFormatDialog = false
+                                            scope.launch {
+                                                setTimeFormatOption(context, timeFormatOption)
+                                            }
+                                        },
+                                    ) {
+                                        Text("OK")
+                                    }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = { showTimeFormatDialog = false }) {
                                         Text("Cancel")
                                     }
                                 },

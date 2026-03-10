@@ -1,5 +1,6 @@
 package com.example.eventalert.ui
 
+import android.text.format.DateFormat
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -32,7 +33,9 @@ import com.example.eventalert.alert.eventKey
 import com.example.eventalert.data.CalendarEvent
 import com.example.eventalert.data.CalendarRepository
 import com.example.eventalert.data.DateFormatOption
+import com.example.eventalert.data.TimeFormatOption
 import com.example.eventalert.data.getDateFormatOption
+import com.example.eventalert.data.getTimeFormatOption
 import com.example.eventalert.data.getDismissedAlertEventKeys
 import com.example.eventalert.data.getSnoozedAlerts
 import java.text.SimpleDateFormat
@@ -45,28 +48,56 @@ private fun formatEventSubtitle(
     event: CalendarEvent,
     snoozedUntil: Long?,
     dateFormatOption: DateFormatOption,
+    timeFormatOption: TimeFormatOption,
+    is24HourSystem: Boolean,
 ): String {
     return try {
-        val datePattern = when (dateFormatOption) {
-            DateFormatOption.SYSTEM_DEFAULT -> "EEE, MMM d, yyyy"
-            DateFormatOption.DAY_MONTH_YEAR -> "dd/MM/yyyy"
-            DateFormatOption.MONTH_DAY_YEAR -> "MM/dd/yyyy"
-            DateFormatOption.YEAR_MONTH_DAY -> "yyyy-MM-dd"
+        val dateStr = when (dateFormatOption) {
+            DateFormatOption.SYSTEM_DEFAULT -> {
+                java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM, Locale.getDefault())
+                    .format(Date(event.startTimeMillis))
+            }
+            DateFormatOption.DAY_MONTH_YEAR -> {
+                SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(event.startTimeMillis))
+            }
+            DateFormatOption.MONTH_DAY_YEAR -> {
+                SimpleDateFormat("MM/dd/yyyy", Locale.getDefault()).format(Date(event.startTimeMillis))
+            }
+            DateFormatOption.YEAR_MONTH_DAY -> {
+                SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(event.startTimeMillis))
+            }
         }
-        val dateStr = SimpleDateFormat(datePattern, Locale.getDefault()).format(Date(event.startTimeMillis))
         val base = if (event.isAllDay) {
             val alertStr = event.reminderMinutesBefore?.let {
-                SimpleDateFormat("EEE, MMM d, h:mm a", Locale.getDefault()).format(Date(alertTimeMillis(event)))
+                val timePattern = when (timeFormatOption) {
+                    TimeFormatOption.HOUR_24 -> "HH:mm"
+                    TimeFormatOption.HOUR_12 -> "h:mm a"
+                    TimeFormatOption.SYSTEM_DEFAULT -> if (is24HourSystem) "HH:mm" else "h:mm a"
+                }
+                val alertDate = Date(alertTimeMillis(event))
+                val timeStr = SimpleDateFormat(timePattern, Locale.getDefault()).format(alertDate)
+                // Reuse the already formatted dateStr plus formatted time
+                "$dateStr, $timeStr"
             } ?: "Uses calendar reminder"
             "All day · $dateStr · Alert $alertStr"
         } else {
-            val shortTimeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
+            val timePattern = when (timeFormatOption) {
+                TimeFormatOption.HOUR_24 -> "HH:mm"
+                TimeFormatOption.HOUR_12 -> "h:mm a"
+                TimeFormatOption.SYSTEM_DEFAULT -> if (is24HourSystem) "HH:mm" else "h:mm a"
+            }
+            val shortTimeFormat = SimpleDateFormat(timePattern, Locale.getDefault())
             val startTimeStr = shortTimeFormat.format(Date(event.startTimeMillis))
             val alertTimeStr = shortTimeFormat.format(Date(alertTimeMillis(event)))
             "$dateStr · $startTimeStr · Alert $alertTimeStr"
         }
         return if (snoozedUntil != null && snoozedUntil > System.currentTimeMillis()) {
-            val shortTimeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
+            val timePattern = when (timeFormatOption) {
+                TimeFormatOption.HOUR_24 -> "HH:mm"
+                TimeFormatOption.HOUR_12 -> "h:mm a"
+                TimeFormatOption.SYSTEM_DEFAULT -> if (is24HourSystem) "HH:mm" else "h:mm a"
+            }
+            val shortTimeFormat = SimpleDateFormat(timePattern, Locale.getDefault())
             val snoozeStr = shortTimeFormat.format(Date(snoozedUntil))
             "$base · Snoozed until $snoozeStr"
         }
@@ -89,6 +120,7 @@ fun EventListScreen(
 ) {
     val context = LocalContext.current
     var dateFormatOption by remember { mutableStateOf(DateFormatOption.SYSTEM_DEFAULT) }
+    var timeFormatOption by remember { mutableStateOf(TimeFormatOption.SYSTEM_DEFAULT) }
     var loading by remember { mutableStateOf<Boolean>(true) }
     var events by remember { mutableStateOf<List<CalendarEvent>>(emptyList()) }
     var loadedEndMillis by remember { mutableStateOf(0L) }
@@ -102,6 +134,7 @@ fun EventListScreen(
 
     LaunchedEffect(Unit) {
         dateFormatOption = getDateFormatOption(context)
+        timeFormatOption = getTimeFormatOption(context)
     }
 
     LaunchedEffect(calendarIds, refreshTrigger) {
@@ -268,7 +301,15 @@ fun EventListScreen(
                                     ListItem(
                                         headlineContent = { Text(text = event.title) },
                                         supportingContent = {
-                                            Text(text = formatEventSubtitle(event, snoozedUntil, dateFormatOption))
+                                            Text(
+                                                text = formatEventSubtitle(
+                                                    event = event,
+                                                    snoozedUntil = snoozedUntil,
+                                                    dateFormatOption = dateFormatOption,
+                                                    timeFormatOption = timeFormatOption,
+                                                    is24HourSystem = DateFormat.is24HourFormat(context),
+                                                ),
+                                            )
                                         },
                                         trailingContent = {
                                             Switch(

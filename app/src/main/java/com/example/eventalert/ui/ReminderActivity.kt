@@ -8,6 +8,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import android.text.format.DateFormat
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,9 +35,11 @@ import androidx.compose.ui.unit.dp
 import com.example.eventalert.alert.AlarmReceiver
 import com.example.eventalert.alert.AlertScheduler
 import com.example.eventalert.data.DateFormatOption
+import com.example.eventalert.data.TimeFormatOption
 import com.example.eventalert.data.addDismissedAlertEventKey
 import com.example.eventalert.data.clearSnoozedAlert
 import com.example.eventalert.data.getDateFormatOption
+import com.example.eventalert.data.getTimeFormatOption
 import com.example.eventalert.ui.theme.EventAlertTheme
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -70,6 +73,7 @@ class ReminderActivity : ComponentActivity() {
                 val notificationId: Int = remember { intent?.getIntExtra(EXTRA_NOTIFICATION_ID, 0) ?: 0 }
 
                 var dateFormatOption by remember { mutableStateOf(DateFormatOption.SYSTEM_DEFAULT) }
+                var timeFormatOption by remember { mutableStateOf(TimeFormatOption.SYSTEM_DEFAULT) }
                 LaunchedEffect(Unit) {
                     // Best-effort, ignore failures; falls back to system default.
                     dateFormatOption = try {
@@ -77,26 +81,54 @@ class ReminderActivity : ComponentActivity() {
                     } catch (_: Exception) {
                         DateFormatOption.SYSTEM_DEFAULT
                     }
+                    timeFormatOption = try {
+                        getTimeFormatOption(appContext)
+                    } catch (_: Exception) {
+                        TimeFormatOption.SYSTEM_DEFAULT
+                    }
                 }
-                val timeText = remember(startTimeMillis, isAllDay, dateFormatOption) {
+                val timeText = remember(startTimeMillis, isAllDay, dateFormatOption, timeFormatOption) {
                     if (startTimeMillis == 0L) ""
                     else if (isAllDay) {
-                        val datePattern = when (dateFormatOption) {
-                            DateFormatOption.SYSTEM_DEFAULT -> "EEE, MMM d, yyyy"
-                            DateFormatOption.DAY_MONTH_YEAR -> "dd/MM/yyyy"
-                            DateFormatOption.MONTH_DAY_YEAR -> "MM/dd/yyyy"
-                            DateFormatOption.YEAR_MONTH_DAY -> "yyyy-MM-dd"
+                        val dateStr = when (dateFormatOption) {
+                            DateFormatOption.SYSTEM_DEFAULT -> {
+                                java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM, Locale.getDefault())
+                                    .format(Date(startTimeMillis))
+                            }
+                            DateFormatOption.DAY_MONTH_YEAR -> {
+                                SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(startTimeMillis))
+                            }
+                            DateFormatOption.MONTH_DAY_YEAR -> {
+                                SimpleDateFormat("MM/dd/yyyy", Locale.getDefault()).format(Date(startTimeMillis))
+                            }
+                            DateFormatOption.YEAR_MONTH_DAY -> {
+                                SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(startTimeMillis))
+                            }
                         }
-                        SimpleDateFormat(datePattern, Locale.getDefault()).format(Date(startTimeMillis))
+                        dateStr
                     } else {
-                        val datePattern = when (dateFormatOption) {
-                            DateFormatOption.SYSTEM_DEFAULT -> "EEE, MMM d, yyyy"
-                            DateFormatOption.DAY_MONTH_YEAR -> "dd/MM/yyyy"
-                            DateFormatOption.MONTH_DAY_YEAR -> "MM/dd/yyyy"
-                            DateFormatOption.YEAR_MONTH_DAY -> "yyyy-MM-dd"
+                        val dateStr = when (dateFormatOption) {
+                            DateFormatOption.SYSTEM_DEFAULT -> {
+                                java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM, Locale.getDefault())
+                                    .format(Date(startTimeMillis))
+                            }
+                            DateFormatOption.DAY_MONTH_YEAR -> {
+                                SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(startTimeMillis))
+                            }
+                            DateFormatOption.MONTH_DAY_YEAR -> {
+                                SimpleDateFormat("MM/dd/yyyy", Locale.getDefault()).format(Date(startTimeMillis))
+                            }
+                            DateFormatOption.YEAR_MONTH_DAY -> {
+                                SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(startTimeMillis))
+                            }
                         }
-                        val dateStr = SimpleDateFormat(datePattern, Locale.getDefault()).format(Date(startTimeMillis))
-                        val timeStr = SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(startTimeMillis))
+                        val is24HourSystem = DateFormat.is24HourFormat(ctx)
+                        val timePattern = when (timeFormatOption) {
+                            TimeFormatOption.HOUR_24 -> "HH:mm"
+                            TimeFormatOption.HOUR_12 -> "h:mm a"
+                            TimeFormatOption.SYSTEM_DEFAULT -> if (is24HourSystem) "HH:mm" else "h:mm a"
+                        }
+                        val timeStr = SimpleDateFormat(timePattern, Locale.getDefault()).format(Date(startTimeMillis))
                         "$dateStr · $timeStr"
                     }
                 }

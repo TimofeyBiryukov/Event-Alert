@@ -18,8 +18,10 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun SettingsScreen(
     currentDateFormatLabel: String,
+    currentTimeFormatLabel: String,
     currentCalendarLabel: String,
     onSelectDateFormat: () -> Unit,
+    onSelectTimeFormat: () -> Unit,
     onSelectCalendar: () -> Unit,
     onTestAlert: () -> Unit,
     modifier: Modifier = Modifier,
@@ -40,6 +42,19 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable { onSelectDateFormat() },
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        ListItem(
+            headlineContent = { Text(text = "Time format") },
+            supportingContent = {
+                Text(
+                    text = currentTimeFormatLabel,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onSelectTimeFormat() },
         )
         Spacer(modifier = Modifier.height(8.dp))
         ListItem(

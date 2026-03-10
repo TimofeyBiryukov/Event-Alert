@@ -12,12 +12,19 @@ import kotlinx.coroutines.flow.map
 private val Context.settingsDataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
 private val DATE_FORMAT_KEY = stringPreferencesKey("date_format")
+private val TIME_FORMAT_KEY = stringPreferencesKey("time_format")
 
 enum class DateFormatOption {
     SYSTEM_DEFAULT,
     DAY_MONTH_YEAR,
     MONTH_DAY_YEAR,
     YEAR_MONTH_DAY,
+}
+
+enum class TimeFormatOption {
+    SYSTEM_DEFAULT,
+    HOUR_12,
+    HOUR_24,
 }
 
 suspend fun getDateFormatOption(context: Context): DateFormatOption {
@@ -30,6 +37,19 @@ suspend fun getDateFormatOption(context: Context): DateFormatOption {
 suspend fun setDateFormatOption(context: Context, option: DateFormatOption) {
     context.settingsDataStore.edit { prefs ->
         prefs[DATE_FORMAT_KEY] = option.name
+    }
+}
+
+suspend fun getTimeFormatOption(context: Context): TimeFormatOption {
+    val raw = context.settingsDataStore.data
+        .map { prefs -> prefs[TIME_FORMAT_KEY] ?: TimeFormatOption.SYSTEM_DEFAULT.name }
+        .first()
+    return runCatching { TimeFormatOption.valueOf(raw) }.getOrDefault(TimeFormatOption.SYSTEM_DEFAULT)
+}
+
+suspend fun setTimeFormatOption(context: Context, option: TimeFormatOption) {
+    context.settingsDataStore.edit { prefs ->
+        prefs[TIME_FORMAT_KEY] = option.name
     }
 }
 
