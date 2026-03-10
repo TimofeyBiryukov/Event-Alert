@@ -26,16 +26,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
-import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.example.eventalert.data.CalendarItem
 import com.example.eventalert.data.CalendarRepository
-import com.example.eventalert.data.setSelectedCalendarIds
 
 @Composable
 fun CalendarWizardScreen(
@@ -162,14 +159,10 @@ fun CalendarWizardScreen(
         }
         if (permissionGranted && !loading && error == null && calendars.isNotEmpty()) {
             Spacer(modifier = Modifier.height(16.dp))
-            val scope = rememberCoroutineScope()
             Button(
                 onClick = {
                     val ids = selectedIds.toSet()
                     onComplete(ids)
-                    scope.launch {
-                        setSelectedCalendarIds(context, ids)
-                    }
                 },
                 enabled = selectedIds.isNotEmpty(),
                 modifier = Modifier.fillMaxWidth(),

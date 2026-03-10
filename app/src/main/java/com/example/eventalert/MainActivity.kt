@@ -64,6 +64,7 @@ import com.example.eventalert.data.getDateFormatOption
 import com.example.eventalert.data.getSelectedCalendarIds
 import com.example.eventalert.data.requestCalendarSync
 import com.example.eventalert.data.setDateFormatOption
+import com.example.eventalert.data.setSelectedCalendarIds
 import com.example.eventalert.ui.ReminderActivity
 import com.example.eventalert.ui.SettingsScreen
 import kotlinx.coroutines.Dispatchers
@@ -131,6 +132,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             EventAlertTheme {
                 val context = LocalContext.current
+                val activity = this@MainActivity
                 var selectedIds by remember { mutableStateOf<Set<Long>?>(null) }
                 var completedWizardThisSession by remember { mutableStateOf(false) }
                 val scope = rememberCoroutineScope()
@@ -190,6 +192,7 @@ class MainActivity : ComponentActivity() {
                 val hasCalendarPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED
                 var showingSettings by remember { mutableStateOf(false) }
                 var appBarMenuExpanded by remember { mutableStateOf(false) }
+                var forceShowWizard by remember { mutableStateOf(false) }
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
@@ -235,12 +238,16 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                 ) { innerPadding ->
-                    if (selectedIds == null || selectedIds!!.isEmpty() || !hasCalendarPermission) {
+                    if (forceShowWizard || selectedIds == null || selectedIds!!.isEmpty() || !hasCalendarPermission) {
                         CalendarWizardScreen(
                             repository = repository,
                             onComplete = { ids ->
                                 completedWizardThisSession = true
                                 selectedIds = ids
+                                forceShowWizard = false
+                                activity.lifecycleScope.launch {
+                                    setSelectedCalendarIds(activity.applicationContext, ids)
+                                }
                             },
                             modifier = Modifier.padding(innerPadding),
                         )
@@ -291,8 +298,9 @@ class MainActivity : ComponentActivity() {
                                 onSelectDateFormat = { showDateFormatDialog = true },
                                 onSelectCalendar = {
                                     showingSettings = false
-                                    completedWizardThisSession = false
-                                    selectedIds = emptySet()
+                                    // Show the calendar wizard without clearing the existing selection.
+                                    // The wizard will only persist a new selection once the user taps Continue.
+                                    forceShowWizard = true
                                 },
                                 onTestAlert = {
                                     val intent = Intent(context, ReminderActivity::class.java).apply {
