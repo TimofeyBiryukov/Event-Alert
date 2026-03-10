@@ -68,6 +68,7 @@ import com.example.eventalert.data.setDateFormatOption
 import com.example.eventalert.data.setSelectedCalendarIds
 import com.example.eventalert.data.getTimeFormatOption
 import com.example.eventalert.data.setTimeFormatOption
+import com.example.eventalert.power.isBatteryOptimizationEnabled
 import com.example.eventalert.ui.ReminderActivity
 import com.example.eventalert.ui.SettingsScreen
 import kotlinx.coroutines.Dispatchers
@@ -85,6 +86,9 @@ class MainActivity : ComponentActivity() {
 
     /** Bumping this triggers EventListScreen to do a full reload; updated on resume and calendar change. */
     private val refreshTriggerState = mutableStateOf(0L)
+
+    /** Tracks whether the app is currently subject to battery optimization. */
+    private val batteryOptimizedState = mutableStateOf(true)
 
     /** Bumps the refresh trigger so EventListScreen reloads (e.g. when an alert has fired). */
     fun refreshEventList() {
@@ -126,6 +130,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        batteryOptimizedState.value = isBatteryOptimizationEnabled(this)
         requestSync()
     }
 
@@ -196,6 +201,7 @@ class MainActivity : ComponentActivity() {
                 }
 
                 val hasCalendarPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED
+                val isBatteryOptimized by batteryOptimizedState
                 var showingSettings by remember { mutableStateOf(false) }
                 var appBarMenuExpanded by remember { mutableStateOf(false) }
                 var forceShowWizard by remember { mutableStateOf(false) }
@@ -333,6 +339,7 @@ class MainActivity : ComponentActivity() {
                                 repository = repository,
                                 refreshTrigger = refreshTriggerState.value,
                                 onRefreshRequested = { requestSync() },
+                                isBatteryOptimized = isBatteryOptimized,
                                 modifier = Modifier.padding(innerPadding),
                             )
                         }
