@@ -26,37 +26,21 @@ fun SettingsScreen(
     onTestAlert: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    @Composable
+    fun spacer(margin: Int = 8) = Spacer(modifier = Modifier.height(margin.dp))
+
     Column(
         modifier = modifier
             .fillMaxSize()
             .padding(16.dp),
     ) {
-        ListItem(
-            headlineContent = { Text(text = "Date format") },
-            supportingContent = {
-                Text(
-                    text = currentDateFormatLabel,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onSelectDateFormat() },
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        ListItem(
-            headlineContent = { Text(text = "Time format") },
-            supportingContent = {
-                Text(
-                    text = currentTimeFormatLabel,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onSelectTimeFormat() },
-        )
-        Spacer(modifier = Modifier.height(8.dp))
+        Button(
+            onClick = onTestAlert,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(text = "Test Alert")
+        }
+        spacer(margin = 24)
         ListItem(
             headlineContent = { Text(text = "Select calendar") },
             supportingContent = {
@@ -69,13 +53,32 @@ fun SettingsScreen(
                 .fillMaxWidth()
                 .clickable { onSelectCalendar() },
         )
-        Spacer(modifier = Modifier.height(24.dp))
-        Button(
-            onClick = onTestAlert,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(text = "Test Alert")
-        }
+        spacer(margin = 8)
+        ListItem(
+            headlineContent = { Text(text = "Date format") },
+            supportingContent = {
+                Text(
+                    text = currentDateFormatLabel,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onSelectDateFormat() },
+        )
+        spacer(margin = 8)
+        ListItem(
+            headlineContent = { Text(text = "Time format") },
+            supportingContent = {
+                Text(
+                    text = currentTimeFormatLabel,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onSelectTimeFormat() },
+        )        
     }
 }
 
