@@ -2,6 +2,7 @@ package com.example.eventalert
 
 import android.Manifest
 import android.content.BroadcastReceiver
+import android.content.Intent
 import android.content.IntentFilter
 import android.database.ContentObserver
 import android.content.pm.PackageManager
@@ -16,9 +17,28 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -27,7 +47,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.content.ContextCompat.registerReceiver
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -37,8 +59,13 @@ import com.example.eventalert.alert.AlarmReceiver
 import com.example.eventalert.alert.AlertRescheduleWorker
 import com.example.eventalert.alert.AlertScheduler
 import com.example.eventalert.data.CalendarRepository
+import com.example.eventalert.data.DateFormatOption
+import com.example.eventalert.data.getDateFormatOption
 import com.example.eventalert.data.getSelectedCalendarIds
 import com.example.eventalert.data.requestCalendarSync
+import com.example.eventalert.data.setDateFormatOption
+import com.example.eventalert.ui.ReminderActivity
+import com.example.eventalert.ui.SettingsScreen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -49,6 +76,7 @@ import com.example.eventalert.ui.EventListScreen
 import androidx.lifecycle.lifecycleScope
 import com.example.eventalert.ui.theme.EventAlertTheme
 
+@OptIn(ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
 
     /** Bumping this triggers EventListScreen to do a full reload; updated on resume and calendar change. */
@@ -116,6 +144,13 @@ class MainActivity : ComponentActivity() {
                     CalendarRepository(context.applicationContext.contentResolver)
                 }
 
+                var dateFormatOption by remember { mutableStateOf(DateFormatOption.SYSTEM_DEFAULT) }
+                var showDateFormatDialog by remember { mutableStateOf(false) }
+
+                LaunchedEffect(Unit) {
+                    dateFormatOption = getDateFormatOption(context)
+                }
+
                 val permissionLauncher = rememberLauncherForActivityResult(
                     contract = ActivityResultContracts.RequestMultiplePermissions(),
                 ) { _ -> /* result not needed for initial schedule */ }
@@ -153,7 +188,53 @@ class MainActivity : ComponentActivity() {
                 }
 
                 val hasCalendarPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                var showingSettings by remember { mutableStateOf(false) }
+                var appBarMenuExpanded by remember { mutableStateOf(false) }
+
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    topBar = {
+                        if (selectedIds != null && selectedIds!!.isNotEmpty() && hasCalendarPermission) {
+                            if (showingSettings) {
+                                TopAppBar(
+                                    title = { Text(text = "Settings") },
+                                    navigationIcon = {
+                                        IconButton(onClick = { showingSettings = false }) {
+                                            Icon(
+                                                imageVector = Icons.Filled.ArrowBack,
+                                                contentDescription = "Back",
+                                            )
+                                        }
+                                    },
+                                )
+                            } else {
+                                TopAppBar(
+                                    title = { Text(text = "Event Alert") },
+                                    actions = {
+                                        IconButton(onClick = { appBarMenuExpanded = true }) {
+                                            Icon(
+                                                imageVector = Icons.Filled.MoreVert,
+                                                contentDescription = "More options",
+                                            )
+                                        }
+                                        DropdownMenu(
+                                            expanded = appBarMenuExpanded,
+                                            onDismissRequest = { appBarMenuExpanded = false },
+                                        ) {
+                                            DropdownMenuItem(
+                                                text = { Text(text = "Settings") },
+                                                onClick = {
+                                                    appBarMenuExpanded = false
+                                                    showingSettings = true
+                                                },
+                                            )
+                                        }
+                                    },
+                                )
+                            }
+                        }
+                    },
+                ) { innerPadding ->
                     if (selectedIds == null || selectedIds!!.isEmpty() || !hasCalendarPermission) {
                         CalendarWizardScreen(
                             repository = repository,
@@ -198,13 +279,94 @@ class MainActivity : ComponentActivity() {
                                 activity.unregisterReceiver(receiver)
                             }
                         }
-                        EventListScreen(
-                            calendarIds = selectedIds!!,
-                            repository = repository,
-                            refreshTrigger = refreshTriggerState.value,
-                            onRefreshRequested = { requestSync() },
-                            modifier = Modifier.padding(innerPadding),
-                        )
+                        if (showingSettings) {
+                            SettingsScreen(
+                                currentDateFormatLabel = when (dateFormatOption) {
+                                    DateFormatOption.SYSTEM_DEFAULT -> "System default"
+                                    DateFormatOption.DAY_MONTH_YEAR -> "DD/MM/YYYY"
+                                    DateFormatOption.MONTH_DAY_YEAR -> "MM/DD/YYYY"
+                                    DateFormatOption.YEAR_MONTH_DAY -> "YYYY-MM-DD"
+                                },
+                                currentCalendarLabel = "Tap to change calendars",
+                                onSelectDateFormat = { showDateFormatDialog = true },
+                                onSelectCalendar = {
+                                    showingSettings = false
+                                    completedWizardThisSession = false
+                                    selectedIds = emptySet()
+                                },
+                                onTestAlert = {
+                                    val intent = Intent(context, ReminderActivity::class.java).apply {
+                                        putExtra(AlarmReceiver.EXTRA_EVENT_KEY, "test_event")
+                                        putExtra(AlarmReceiver.EXTRA_TITLE, "Sample Event Reminder")
+                                        putExtra(AlarmReceiver.EXTRA_START_TIME_MILLIS, System.currentTimeMillis() + 10 * 60 * 1000L)
+                                        putExtra(AlarmReceiver.EXTRA_IS_ALL_DAY, false)
+                                        putExtra(ReminderActivity.EXTRA_NOTIFICATION_ID, 0)
+                                    }
+                                    context.startActivity(intent)
+                                },
+                                modifier = Modifier.padding(innerPadding),
+                            )
+                        } else {
+                            EventListScreen(
+                                calendarIds = selectedIds!!,
+                                repository = repository,
+                                refreshTrigger = refreshTriggerState.value,
+                                onRefreshRequested = { requestSync() },
+                                modifier = Modifier.padding(innerPadding),
+                            )
+                        }
+                        if (showDateFormatDialog) {
+                            AlertDialog(
+                                onDismissRequest = { showDateFormatDialog = false },
+                                title = { Text(text = "Date format") },
+                                text = {
+                                    Column {
+                                        DateFormatOption.values().forEach { option ->
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(vertical = 4.dp)
+                                                    .clickable {
+                                                        dateFormatOption = option
+                                                    },
+                                            ) {
+                                                RadioButton(
+                                                    selected = option == dateFormatOption,
+                                                    onClick = { dateFormatOption = option },
+                                                )
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text(
+                                                    text = when (option) {
+                                                        DateFormatOption.SYSTEM_DEFAULT -> "System default"
+                                                        DateFormatOption.DAY_MONTH_YEAR -> "DD/MM/YYYY"
+                                                        DateFormatOption.MONTH_DAY_YEAR -> "MM/DD/YYYY"
+                                                        DateFormatOption.YEAR_MONTH_DAY -> "YYYY-MM-DD"
+                                                    },
+                                                )
+                                            }
+                                        }
+                                    }
+                                },
+                                confirmButton = {
+                                    TextButton(
+                                        onClick = {
+                                            showDateFormatDialog = false
+                                            scope.launch {
+                                                setDateFormatOption(context, dateFormatOption)
+                                            }
+                                        },
+                                    ) {
+                                        Text("OK")
+                                    }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = { showDateFormatDialog = false }) {
+                                        Text("Cancel")
+                                    }
+                                },
+                            )
+                        }
                     }
                 }
             }

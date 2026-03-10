@@ -1,0 +1,66 @@
+package com.example.eventalert.ui
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+
+@Composable
+fun SettingsScreen(
+    currentDateFormatLabel: String,
+    currentCalendarLabel: String,
+    onSelectDateFormat: () -> Unit,
+    onSelectCalendar: () -> Unit,
+    onTestAlert: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp),
+    ) {
+        ListItem(
+            headlineContent = { Text(text = "Date format") },
+            supportingContent = {
+                Text(
+                    text = currentDateFormatLabel,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onSelectDateFormat() },
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        ListItem(
+            headlineContent = { Text(text = "Select calendar") },
+            supportingContent = {
+                Text(
+                    text = currentCalendarLabel,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onSelectCalendar() },
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+        Button(
+            onClick = onTestAlert,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(text = "Test Alert")
+        }
+    }
+}
+

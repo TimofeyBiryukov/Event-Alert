@@ -26,14 +26,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.eventalert.alert.AlarmReceiver
 import com.example.eventalert.alert.AlertScheduler
+import com.example.eventalert.data.DateFormatOption
 import com.example.eventalert.data.addDismissedAlertEventKey
 import com.example.eventalert.data.clearSnoozedAlert
+import com.example.eventalert.data.getDateFormatOption
 import com.example.eventalert.ui.theme.EventAlertTheme
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -66,10 +69,25 @@ class ReminderActivity : ComponentActivity() {
                 val isAllDay: Boolean = remember { intent?.getBooleanExtra(AlarmReceiver.EXTRA_IS_ALL_DAY, false) ?: false }
                 val notificationId: Int = remember { intent?.getIntExtra(EXTRA_NOTIFICATION_ID, 0) ?: 0 }
 
-                val timeText = remember(startTimeMillis, isAllDay) {
+                var dateFormatOption by remember { mutableStateOf(DateFormatOption.SYSTEM_DEFAULT) }
+                LaunchedEffect(Unit) {
+                    // Best-effort, ignore failures; falls back to system default.
+                    dateFormatOption = try {
+                        getDateFormatOption(appContext)
+                    } catch (_: Exception) {
+                        DateFormatOption.SYSTEM_DEFAULT
+                    }
+                }
+                val timeText = remember(startTimeMillis, isAllDay, dateFormatOption) {
                     if (startTimeMillis == 0L) ""
                     else if (isAllDay) {
-                        SimpleDateFormat("EEE, MMM d, yyyy", Locale.getDefault()).format(Date(startTimeMillis))
+                        val pattern = when (dateFormatOption) {
+                            DateFormatOption.SYSTEM_DEFAULT -> "EEE, MMM d, yyyy"
+                            DateFormatOption.DAY_MONTH_YEAR -> "dd/MM/yyyy"
+                            DateFormatOption.MONTH_DAY_YEAR -> "MM/dd/yyyy"
+                            DateFormatOption.YEAR_MONTH_DAY -> "yyyy-MM-dd"
+                        }
+                        SimpleDateFormat(pattern, Locale.getDefault()).format(Date(startTimeMillis))
                     } else {
                         SimpleDateFormat("EEE, MMM d, h:mm a", Locale.getDefault()).format(Date(startTimeMillis))
                     }

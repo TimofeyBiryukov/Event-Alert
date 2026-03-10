@@ -1,0 +1,35 @@
+package com.example.eventalert.data
+
+import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+
+private val Context.settingsDataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
+
+private val DATE_FORMAT_KEY = stringPreferencesKey("date_format")
+
+enum class DateFormatOption {
+    SYSTEM_DEFAULT,
+    DAY_MONTH_YEAR,
+    MONTH_DAY_YEAR,
+    YEAR_MONTH_DAY,
+}
+
+suspend fun getDateFormatOption(context: Context): DateFormatOption {
+    val raw = context.settingsDataStore.data
+        .map { prefs -> prefs[DATE_FORMAT_KEY] ?: DateFormatOption.SYSTEM_DEFAULT.name }
+        .first()
+    return runCatching { DateFormatOption.valueOf(raw) }.getOrDefault(DateFormatOption.SYSTEM_DEFAULT)
+}
+
+suspend fun setDateFormatOption(context: Context, option: DateFormatOption) {
+    context.settingsDataStore.edit { prefs ->
+        prefs[DATE_FORMAT_KEY] = option.name
+    }
+}
+

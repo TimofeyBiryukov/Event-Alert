@@ -31,6 +31,8 @@ import com.example.eventalert.alert.alertTimeMillis
 import com.example.eventalert.alert.eventKey
 import com.example.eventalert.data.CalendarEvent
 import com.example.eventalert.data.CalendarRepository
+import com.example.eventalert.data.DateFormatOption
+import com.example.eventalert.data.getDateFormatOption
 import com.example.eventalert.data.getDismissedAlertEventKeys
 import com.example.eventalert.data.getSnoozedAlerts
 import java.text.SimpleDateFormat
@@ -39,9 +41,19 @@ import java.util.Locale
 
 private const val LOAD_MORE_THRESHOLD = 5
 
-private fun formatEventSubtitle(event: CalendarEvent, snoozedUntil: Long?): String {
+private fun formatEventSubtitle(
+    event: CalendarEvent,
+    snoozedUntil: Long?,
+    dateFormatOption: DateFormatOption,
+): String {
     return try {
-        val dateStr = SimpleDateFormat("EEE, MMM d, yyyy", Locale.getDefault()).format(Date(event.startTimeMillis))
+        val datePattern = when (dateFormatOption) {
+            DateFormatOption.SYSTEM_DEFAULT -> "EEE, MMM d, yyyy"
+            DateFormatOption.DAY_MONTH_YEAR -> "dd/MM/yyyy"
+            DateFormatOption.MONTH_DAY_YEAR -> "MM/dd/yyyy"
+            DateFormatOption.YEAR_MONTH_DAY -> "yyyy-MM-dd"
+        }
+        val dateStr = SimpleDateFormat(datePattern, Locale.getDefault()).format(Date(event.startTimeMillis))
         val base = if (event.isAllDay) {
             val alertStr = event.reminderMinutesBefore?.let {
                 SimpleDateFormat("EEE, MMM d, h:mm a", Locale.getDefault()).format(Date(alertTimeMillis(event)))
@@ -76,6 +88,7 @@ fun EventListScreen(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    var dateFormatOption by remember { mutableStateOf(DateFormatOption.SYSTEM_DEFAULT) }
     var loading by remember { mutableStateOf<Boolean>(true) }
     var events by remember { mutableStateOf<List<CalendarEvent>>(emptyList()) }
     var loadedEndMillis by remember { mutableStateOf(0L) }
@@ -86,6 +99,10 @@ fun EventListScreen(
     var dismissedEventKeys by remember { mutableStateOf<Set<String>>(emptySet()) }
     val toggledOn = remember { mutableStateMapOf<String, Boolean>() }
     val listState = rememberLazyListState()
+
+    LaunchedEffect(Unit) {
+        dateFormatOption = getDateFormatOption(context)
+    }
 
     LaunchedEffect(calendarIds, refreshTrigger) {
         loading = true
@@ -251,7 +268,7 @@ fun EventListScreen(
                                     ListItem(
                                         headlineContent = { Text(text = event.title) },
                                         supportingContent = {
-                                            Text(text = formatEventSubtitle(event, snoozedUntil))
+                                            Text(text = formatEventSubtitle(event, snoozedUntil, dateFormatOption))
                                         },
                                         trailingContent = {
                                             Switch(
