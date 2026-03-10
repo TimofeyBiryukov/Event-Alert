@@ -81,15 +81,23 @@ class ReminderActivity : ComponentActivity() {
                 val timeText = remember(startTimeMillis, isAllDay, dateFormatOption) {
                     if (startTimeMillis == 0L) ""
                     else if (isAllDay) {
-                        val pattern = when (dateFormatOption) {
+                        val datePattern = when (dateFormatOption) {
                             DateFormatOption.SYSTEM_DEFAULT -> "EEE, MMM d, yyyy"
                             DateFormatOption.DAY_MONTH_YEAR -> "dd/MM/yyyy"
                             DateFormatOption.MONTH_DAY_YEAR -> "MM/dd/yyyy"
                             DateFormatOption.YEAR_MONTH_DAY -> "yyyy-MM-dd"
                         }
-                        SimpleDateFormat(pattern, Locale.getDefault()).format(Date(startTimeMillis))
+                        SimpleDateFormat(datePattern, Locale.getDefault()).format(Date(startTimeMillis))
                     } else {
-                        SimpleDateFormat("EEE, MMM d, h:mm a", Locale.getDefault()).format(Date(startTimeMillis))
+                        val datePattern = when (dateFormatOption) {
+                            DateFormatOption.SYSTEM_DEFAULT -> "EEE, MMM d, yyyy"
+                            DateFormatOption.DAY_MONTH_YEAR -> "dd/MM/yyyy"
+                            DateFormatOption.MONTH_DAY_YEAR -> "MM/dd/yyyy"
+                            DateFormatOption.YEAR_MONTH_DAY -> "yyyy-MM-dd"
+                        }
+                        val dateStr = SimpleDateFormat(datePattern, Locale.getDefault()).format(Date(startTimeMillis))
+                        val timeStr = SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(startTimeMillis))
+                        "$dateStr · $timeStr"
                     }
                 }
 
