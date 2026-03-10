@@ -39,6 +39,7 @@ fun CalendarWizardScreen(
     repository: CalendarRepository,
     onComplete: (Set<Long>) -> Unit,
     modifier: Modifier = Modifier,
+    initialSelectedIds: Set<Long> = emptySet(),
 ) {
     val context = LocalContext.current
     val activity = context as? Activity
@@ -50,7 +51,7 @@ fun CalendarWizardScreen(
     var calendars by remember { mutableStateOf<List<CalendarItem>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    var selectedIds by remember { mutableStateOf(emptySet<Long>()) }
+    var selectedIds by remember { mutableStateOf(initialSelectedIds) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),

@@ -250,6 +250,7 @@ class MainActivity : ComponentActivity() {
                                 }
                             },
                             modifier = Modifier.padding(innerPadding),
+                            initialSelectedIds = selectedIds ?: emptySet(),
                         )
                     } else {
                         val activity = context as? MainActivity
