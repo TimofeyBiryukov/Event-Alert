@@ -1,163 +1,82 @@
-# Event Alert
+<p align="center">
+  <img src="graphics/icon/web/icon-512.png" alt="Event Alert logo" width="160" />
+</p>
 
-Event Alert is a lightweight native Android app that creates high-signal alerts for your upcoming Google Calendar events. It acts as a thin layer between your existing calendars and the Android notification system to help you avoid missing important events that would otherwise be lost in a sea of standard push notifications.
+### Event Alert
 
-The app focuses on a **single purpose**: surfacing full-screen, easy-to-act-on alerts for upcoming events, as close to native Android behavior as possible.
+Event Alert is a small, native Android app that adds high-signal alerts on top of your existing calendars. It is a thin, on-device layer over the Android calendar provider and notification system, focused on one job: surfacing clear, full-screen alerts so you do not miss important events.
 
----
-
-## Features
-
-- **Calendar selection wizard**
-  - On first launch, a simple wizard lets you pick which calendars to import from (e.g., specific Google accounts or calendars).
-
-- **Event list**
-  - Main screen shows an endless list of upcoming events pulled from the selected calendars.
-  - Each item displays the event details and the scheduled alert time(s).
-
-- **Smart alerts**
-  - Full-screen style alerts for upcoming events, similar to native alarm-style alerts on some OEM devices.
-  - Support for dismiss and snooze actions, using standard Android notification/alert behaviors where possible.
-
-- **Configurable lead times**
-  - Choose how far in advance alerts should trigger (e.g., 5, 10, 15+ minutes before an event).
-
-- **Simple settings**
-  - Change which calendars are imported from.
-  - Enable/disable app-managed alerts.
-  - Adjust sync interval / refresh behavior (e.g., how often to re-pull calendar data).
-
-- **Non-goals**
-  - Not a full calendar replacement UI.
-  - No complex account management; relies on existing Google accounts on the device.
-  - No server-side components; all logic runs on-device.
-
-For more background on the product idea, mindset, and UI concept, see `docs/EventAlertMain.md`.
+This repository is mainly for our future selves. The goal of this README is to help a maintainer get back up to speed quickly, not to pitch the app as a big open-source project.
 
 ---
 
-## Architecture & Data Flow (High-Level)
+### What it does (short version)
 
-At a high level, Event Alert:
+- **Calendar-based alerts**: Reads upcoming events from the device calendars you select.
+- **High-signal notifications**: Schedules native-feeling, full-screen alerts with dismiss/snooze actions.
+- **Simple settings**: Lets you pick calendars and basic lead times before events.
+- **Strictly on-device**: No backend, no data exfiltration; everything runs locally.
 
-1. Reads calendar data from the device (Google Calendar / calendar provider).
-2. Maps upcoming events into internal models.
-3. Schedules future alerts using Android alarm/notification mechanisms.
-4. Surfaces alerts as native-feeling, full-screen notifications with snooze/dismiss actions.
+Non-goals:
 
-Conceptual flow:
+- Not a full calendar client or replacement UI.
+- No complex account management.
+- No server-side components.
 
-```mermaid
-flowchart TD
-  user[User] --> appUI[EventAlertApp]
-  appUI --> calendarAccess[CalendarProvider_Or_GoogleCalendarAPI]
-  calendarAccess --> scheduler[AlertScheduler]
-  scheduler --> notifications[SystemNotifications_And_FullScreenAlerts]
-```
-
-The implementation will favor:
-
-- Android calendar provider / Google Calendar APIs for event data.
-- Alarm/notification APIs (and related Jetpack components) for scheduling.
-- Jetpack Compose + Material 3 for the UI.
+For deeper product and architecture details, see `docs/EventAlertMain.md`, `docs/CalendarImportAndAlerts.md`, and `AGENTS.md`.
 
 ---
 
-## Tech Stack
+### Build & run
 
-- **Language**: Kotlin
-- **UI**: Jetpack Compose, Material 3
-- **Android libraries**:
-  - Android Jetpack (e.g., ViewModel, WorkManager or AlarmManager integration where appropriate)
-  - AndroidX support libraries
-- **Calendar access**:
-  - Android Calendar Provider and/or Google Calendar API (depending on capabilities and permissions)
-- **IDE**: Android Studio
+- **Prerequisites**
+  - Android Studio (latest stable).
+  - Recent Android SDK installed.
 
-Target platform: modern Android phones (phone-first experience; tablet behavior is a nice-to-have).
+- **CLI build (Gradle wrapper)**
+  - Windows:
+    - `.\gradlew.bat assembleDebug`
+    - `.\gradlew.bat assembleRelease`
+  - macOS / Linux:
+    - `./gradlew assembleDebug`
+    - `./gradlew assembleRelease`
 
----
+- **From Android Studio**
+  - Open the `EventAlert` project.
+  - Let Gradle sync.
+  - Use the default app run configuration and deploy to a phone/emulator.
 
-## Getting Started (Development)
-
-### Prerequisites
-
-- Android Studio installed (latest stable version recommended).
-- Android SDK installed with a recent API level (exact minimum/target SDK to be defined as implementation starts).
-- A device or emulator with:
-  - At least one Google account configured.
-  - Google Calendar or equivalent calendar data available.
-
-### Setup
-
-1. Open the project in Android Studio:
-   - `File` → `Open...` → select the `EventAlert` project directory.
-2. Let Gradle sync and resolve dependencies.
-3. Select a run configuration and deploy to a device/emulator.
-
-### Permissions
-
-The app will require:
-
-- **Calendar read access** to import events from the selected calendars.
-- **Notification permission** to display alerts.
-- **Exact alarm / schedule-related permissions** on newer Android versions, if required for precise alert timing.
-
-The onboarding flow will explain why each permission is needed and request them at appropriate times.
+The app is phone-first; tablet behavior is currently a nice-to-have.
 
 ---
 
-## Usage Overview
+### Releases & CI
 
-### First Launch Wizard
+On merges to the `release` branch, GitHub Actions (see `.github/workflows/release-android.yml`) will build the app and attach an APK to a GitHub Release.
 
-- Walks the user through:
-  - Granting calendar and notification permissions.
-  - Choosing which calendars to import from.
+- **Latest release (APK download)**: `https://github.com/<owner>/<repo>/releases/latest`
 
-### Main Screen
+Once the first release is created, update the placeholder above with the real repository path if needed.
 
-- Displays a scrolling list of upcoming events.
-- Shows:
-  - Event title, time, and calendar.
-  - When an alert is planned to fire relative to the event start.
+**Lightweight release checklist (for humans):**
 
-### Settings
-
-- Configure:
-  - Lead times (e.g., 5/10/15+ minutes before events).
-  - Which calendars are included.
-  - Whether Event Alert’s custom alerts are enabled.
-  - Sync/refresh interval for calendar data.
+1. Bump version code/name in the Android module (if needed) and commit.
+2. Make sure `release` has the changes you want (merge from your main/dev branch as appropriate).
+3. Push to `release` on GitHub.
+4. Wait for the \"Build and release APK on release branch\" workflow to complete.
+5. Go to the GitHub Releases page and confirm that the latest release has an APK attached and is installable on a device.
 
 ---
 
-## Roadmap (Planned Directions)
+### Maintainer notes
 
-Planned and possible future enhancements:
+- **When changing core behavior**
+  - Keep the app within its single-purpose scope: a lightweight alerts layer over existing calendars.
+  - Respect the privacy constraints in `AGENTS.md` (on-device only, no unnecessary permissions).
 
-- More flexible snooze options and presets.
-- Per-event or per-calendar override rules for alerts.
-- Additional polish for dark mode and Material 3 theming.
-- Battery/performance tuning for background sync and scheduling.
-- Potential companion experiences (e.g., Wear OS) if they align with the simple, single-purpose vision.
+- **Documentation to revisit**
+  - `AGENTS.md` – agent and contributor guidelines.
+  - `docs/EventAlertMain.md` – product vision and UI.
+  - `docs/CalendarImportAndAlerts.md` – details of calendar import, event modeling, and alert scheduling.
 
----
-
-## Privacy & Data
-
-- All calendar data is accessed **on-device** using Android’s APIs.
-- No custom backend or external servers are planned; alerts are scheduled locally.
-- Calendar information is used solely to:
-  - Read upcoming events.
-  - Schedule corresponding local alerts on the device.
-
-If the privacy model changes (for example, if a backend is ever introduced), this section should be updated and clearly explained to users.
-
----
-
-## License
-
-License information is not yet defined for this project.  
-Once chosen, the appropriate license text will be added here.
-
+If the structure of the app or release workflow changes, keep this README brief but up to date.
