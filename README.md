@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="graphics/docs/icon-512.png" alt="Event Alert logo" width="160" />
+  <img src="docs/icon-512.png" alt="Event Alert logo" width="160" />
 </p>
 
 ### Event Alert
