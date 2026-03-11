@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://timofeybiryukov.github.io/EventAlert/sitemap.xml
+

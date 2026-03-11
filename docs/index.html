@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Event Alert – High-signal Android calendar alerts</title>
+    <meta
+      name="description"
+      content="Event Alert is a small, native Android app that adds high-signal alerts on top of your existing calendars. It runs entirely on-device with no backend."
+    />
+
+    <!-- Canonical & basic SEO -->
+    <link
+      rel="canonical"
+      href="https://timofeybiryukov.github.io/EventAlert/"
+    />
+
+    <!-- Open Graph / social cards -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Event Alert – High-signal Android calendar alerts" />
+    <meta
+      property="og:description"
+      content="Thin, on-device alerts layer over your Android calendars. High-signal, full-screen alerts so you do not miss important events."
+    />
+    <meta
+      property="og:image"
+      content="https://timofeybiryukov.github.io/EventAlert/graphics/icon/web/icon-512.png"
+    />
+    <meta property="og:url" content="https://timofeybiryukov.github.io/EventAlert/" />
+
+    <!-- Twitter cards -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Event Alert – High-signal Android calendar alerts" />
+    <meta
+      name="twitter:description"
+      content="Thin, on-device alerts layer over your Android calendars. High-signal, full-screen alerts so you do not miss important events."
+    />
+    <meta
+      name="twitter:image"
+      content="https://timofeybiryukov.github.io/EventAlert/graphics/icon/web/icon-512.png"
+    />
+
+    <!-- JSON-LD structured data -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Event Alert",
+        "applicationCategory": "ProductivityApplication",
+        "operatingSystem": "Android",
+        "description": "A small, native Android app that adds high-signal alerts on top of your existing calendars. Runs entirely on-device with no backend.",
+        "url": "https://timofeybiryukov.github.io/EventAlert/",
+        "softwareVersion": "1.0.0",
+        "publisher": {
+          "@type": "Organization",
+          "name": "Event Alert"
+        },
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        }
+      }
+    </script>
+
+    <link rel="stylesheet" href="./styles.css" />
+    <link
+      rel="icon"
+      type="image/png"
+      href="../graphics/icon/web/icon-512.png"
+    />
+  </head>
+  <body>
+    <header class="ea-header">
+      <div class="ea-container ea-header-content">
+        <div class="ea-logo-title">
+          <img
+            src="../graphics/icon/web/icon-512.png"
+            alt="Event Alert logo"
+            class="ea-logo"
+          />
+          <div>
+            <h1>Event Alert</h1>
+            <p class="ea-tagline">
+              High-signal Android calendar alerts, running entirely on-device.
+            </p>
+          </div>
+        </div>
+        <nav class="ea-header-nav">
+          <a href="#features">Features</a>
+          <a href="#how-it-works">How it works</a>
+          <a href="#open-source">Open source</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="ea-hero">
+        <div class="ea-container ea-hero-inner">
+          <div class="ea-hero-text">
+            <h2>Never miss the events that matter.</h2>
+            <p>
+              Event Alert is a thin, native layer over your existing Android calendars.
+              It reads upcoming events from the device, schedules high-signal full-screen alerts,
+              and stays out of your way the rest of the time.
+            </p>
+            <div class="ea-hero-actions">
+              <a
+                class="ea-button ea-button-primary"
+                href="https://github.com/timofeybiryukov/EventAlert/releases/latest"
+              >
+                Download APK
+              </a>
+              <a
+                class="ea-button ea-button-secondary"
+                href="https://github.com/timofeybiryukov/EventAlert"
+              >
+                View source on GitHub
+              </a>
+            </div>
+          </div>
+          <div class="ea-hero-visual">
+            <img
+              src="../graphics/icon/web/icon-512.png"
+              alt="Event Alert app icon"
+              class="ea-hero-icon"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section id="features" class="ea-section">
+        <div class="ea-container">
+          <h3>Features</h3>
+          <div class="ea-features-grid">
+            <div class="ea-feature-card">
+              <h4>High-signal alerts</h4>
+              <p>
+                Full-screen, easy-to-act-on alerts for upcoming calendar events,
+                designed to be visible when normal notifications are not enough.
+              </p>
+            </div>
+            <div class="ea-feature-card">
+              <h4>Simple setup</h4>
+              <p>
+                Pick which calendars to watch and how far in advance alerts should fire.
+                No accounts, no backend, just your existing device calendars.
+              </p>
+            </div>
+            <div class="ea-feature-card">
+              <h4>On-device & privacy-friendly</h4>
+              <p>
+                Event data stays on your device. The app reads calendars, schedules alerts,
+                and never sends event details to a server.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="how-it-works" class="ea-section ea-section-alt">
+        <div class="ea-container">
+          <h3>How it works</h3>
+          <ol class="ea-steps">
+            <li><strong>Read calendars:</strong> Event Alert reads upcoming events from the Android calendar provider.</li>
+            <li><strong>Schedule alerts:</strong> Events are mapped into internal models and scheduled using Android alarm/notification APIs.</li>
+            <li><strong>Show alerts:</strong> When it is time, you get a high-signal, native-feeling alert with dismiss and snooze actions.</li>
+          </ol>
+          <p class="ea-small-text">
+            For architecture details and edge cases, see the project
+            <a href="https://github.com/timofeybiryukov/EventAlert">README and docs</a>.
+          </p>
+        </div>
+      </section>
+
+      <section id="open-source" class="ea-section">
+        <div class="ea-container">
+          <h3>Open source, small-scope project</h3>
+          <p>
+            Event Alert is a small open-source app maintained primarily for our own use.
+            The public repo exists so we can version the code, keep release builds handy,
+            and let others reuse or fork the idea if it is useful.
+          </p>
+          <p>
+            Issues and pull requests are welcome, but the scope is intentionally narrow:
+            a lightweight alerts layer over existing calendars, not a full calendar client.
+          </p>
+          <p class="ea-small-text">
+            Source code and documentation:
+            <a href="https://github.com/timofeybiryukov/EventAlert">github.com/timofeybiryukov/EventAlert</a>
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="ea-footer">
+      <div class="ea-container">
+        <p>&copy; <span id="ea-year"></span> Event Alert. Built as a lightweight, on-device Android app.</p>
+      </div>
+      <script>
+        document.getElementById("ea-year").textContent = new Date().getFullYear();
+      </script>
+    </footer>
+  </body>
+</html>
+

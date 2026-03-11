@@ -54,7 +54,7 @@ The app is phone-first; tablet behavior is currently a nice-to-have.
 
 On merges to the `release` branch, GitHub Actions (see `.github/workflows/release-android.yml`) will build the app and attach an APK to a GitHub Release.
 
-- **Latest release (APK download)**: `https://github.com/<owner>/<repo>/releases/latest`
+- **Latest release (APK download)**: `https://github.com/timofeybiryukov/EventAlert/releases/latest`
 
 Once the first release is created, update the placeholder above with the real repository path if needed.
 
@@ -73,10 +73,5 @@ Once the first release is created, update the placeholder above with the real re
 - **When changing core behavior**
   - Keep the app within its single-purpose scope: a lightweight alerts layer over existing calendars.
   - Respect the privacy constraints in `AGENTS.md` (on-device only, no unnecessary permissions).
-
-- **Documentation to revisit**
-  - `AGENTS.md` – agent and contributor guidelines.
-  - `docs/EventAlertMain.md` – product vision and UI.
-  - `docs/CalendarImportAndAlerts.md` – details of calendar import, event modeling, and alert scheduling.
 
 If the structure of the app or release workflow changes, keep this README brief but up to date.
