@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.background
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -32,14 +33,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
 import com.example.eventalert.alert.AlarmReceiver
 import com.example.eventalert.alert.AlertScheduler
+import com.example.eventalert.data.AlertStyleOption
 import com.example.eventalert.data.DateFormatOption
 import com.example.eventalert.data.TimeFormatOption
 import com.example.eventalert.data.addDismissedAlertEventKey
 import com.example.eventalert.data.clearSnoozedAlert
 import com.example.eventalert.data.getDateFormatOption
 import com.example.eventalert.data.getTimeFormatOption
+import com.example.eventalert.data.getAlertStyleOption
 import com.example.eventalert.ui.theme.EventAlertTheme
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -74,6 +78,7 @@ class ReminderActivity : ComponentActivity() {
 
                 var dateFormatOption by remember { mutableStateOf(DateFormatOption.SYSTEM_DEFAULT) }
                 var timeFormatOption by remember { mutableStateOf(TimeFormatOption.SYSTEM_DEFAULT) }
+                var alertStyleOption by remember { mutableStateOf(AlertStyleOption.SYSTEM_DEFAULT) }
                 LaunchedEffect(Unit) {
                     // Best-effort, ignore failures; falls back to system default.
                     dateFormatOption = try {
@@ -85,6 +90,11 @@ class ReminderActivity : ComponentActivity() {
                         getTimeFormatOption(appContext)
                     } catch (_: Exception) {
                         TimeFormatOption.SYSTEM_DEFAULT
+                    }
+                    alertStyleOption = try {
+                        getAlertStyleOption(appContext)
+                    } catch (_: Exception) {
+                        AlertStyleOption.SYSTEM_DEFAULT
                     }
                 }
                 val timeText = remember(startTimeMillis, isAllDay, dateFormatOption, timeFormatOption) {
@@ -145,9 +155,16 @@ class ReminderActivity : ComponentActivity() {
                 var snoozeExpanded by remember { mutableStateOf(false) }
                 var selectedSnoozeOption by remember { mutableStateOf(snoozeOptions.first()) }
 
+                val (backgroundColor, contentColor) = when (alertStyleOption) {
+                    AlertStyleOption.SYSTEM_DEFAULT -> MaterialTheme.colorScheme.background to MaterialTheme.colorScheme.onBackground
+                    AlertStyleOption.LIGHT -> Color.White to Color.Black
+                    AlertStyleOption.DARK -> Color.Black to Color.White
+                }
+
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
+                        .background(backgroundColor)
                         .padding(24.dp),
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -155,16 +172,19 @@ class ReminderActivity : ComponentActivity() {
                     Text(
                         text = title,
                         style = MaterialTheme.typography.headlineMedium,
+                        color = contentColor,
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = timeText,
                         style = MaterialTheme.typography.bodyLarge,
+                        color = contentColor,
                     )
                     Spacer(modifier = Modifier.height(32.dp))
                     Text(
                         text = ctx.getString(com.example.eventalert.R.string.reminder_snooze_for),
                         style = MaterialTheme.typography.bodyMedium,
+                        color = contentColor,
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Box {

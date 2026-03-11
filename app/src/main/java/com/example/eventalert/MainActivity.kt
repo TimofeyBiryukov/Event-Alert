@@ -59,6 +59,7 @@ import com.example.eventalert.alert.AlarmReceiver
 import com.example.eventalert.alert.AlertRescheduleWorker
 import com.example.eventalert.alert.AlertScheduler
 import com.example.eventalert.data.CalendarRepository
+import com.example.eventalert.data.AlertStyleOption
 import com.example.eventalert.data.DateFormatOption
 import com.example.eventalert.data.TimeFormatOption
 import com.example.eventalert.data.getDateFormatOption
@@ -67,7 +68,9 @@ import com.example.eventalert.data.requestCalendarSync
 import com.example.eventalert.data.setDateFormatOption
 import com.example.eventalert.data.setSelectedCalendarIds
 import com.example.eventalert.data.getTimeFormatOption
+import com.example.eventalert.data.getAlertStyleOption
 import com.example.eventalert.data.setTimeFormatOption
+import com.example.eventalert.data.setAlertStyleOption
 import com.example.eventalert.power.isBatteryOptimizationEnabled
 import com.example.eventalert.ui.ReminderActivity
 import com.example.eventalert.ui.SettingsScreen
@@ -156,12 +159,15 @@ class MainActivity : ComponentActivity() {
 
                 var dateFormatOption by remember { mutableStateOf(DateFormatOption.SYSTEM_DEFAULT) }
                 var timeFormatOption by remember { mutableStateOf(TimeFormatOption.SYSTEM_DEFAULT) }
+                var alertStyleOption by remember { mutableStateOf(AlertStyleOption.SYSTEM_DEFAULT) }
                 var showDateFormatDialog by remember { mutableStateOf(false) }
                 var showTimeFormatDialog by remember { mutableStateOf(false) }
+                var showAlertStyleDialog by remember { mutableStateOf(false) }
 
                 LaunchedEffect(Unit) {
                     dateFormatOption = getDateFormatOption(context)
                     timeFormatOption = getTimeFormatOption(context)
+                    alertStyleOption = getAlertStyleOption(context)
                 }
 
                 val permissionLauncher = rememberLauncherForActivityResult(
@@ -301,16 +307,24 @@ class MainActivity : ComponentActivity() {
                         }
                         if (showingSettings) {
                             SettingsScreen(
-                                currentDateFormatLabel = when (dateFormatOption) {
+                                currentDateFormatLabel =
+                                when (dateFormatOption) {
                                     DateFormatOption.SYSTEM_DEFAULT -> "System default"
                                     DateFormatOption.DAY_MONTH_YEAR -> "DD/MM/YYYY"
                                     DateFormatOption.MONTH_DAY_YEAR -> "MM/DD/YYYY"
                                     DateFormatOption.YEAR_MONTH_DAY -> "YYYY-MM-DD"
                                 },
-                                currentTimeFormatLabel = when (timeFormatOption) {
+                                currentTimeFormatLabel =
+                                when (timeFormatOption) {
                                     TimeFormatOption.SYSTEM_DEFAULT -> "System default"
                                     TimeFormatOption.HOUR_12 -> "12-hour (AM/PM)"
                                     TimeFormatOption.HOUR_24 -> "24-hour"
+                                },
+                                currentAlertStyleLabel =
+                                when (alertStyleOption) {
+                                    AlertStyleOption.SYSTEM_DEFAULT -> "System default"
+                                    AlertStyleOption.LIGHT -> "Always light"
+                                    AlertStyleOption.DARK -> "Always dark"
                                 },
                                 currentCalendarLabel = "Tap to change calendars",
                                 onSelectDateFormat = { showDateFormatDialog = true },
@@ -321,6 +335,7 @@ class MainActivity : ComponentActivity() {
                                     // The wizard will only persist a new selection once the user taps Continue.
                                     forceShowWizard = true
                                 },
+                                onSelectAlertStyle = { showAlertStyleDialog = true },
                                 onTestAlert = {
                                     val intent = Intent(context, ReminderActivity::class.java).apply {
                                         putExtra(AlarmReceiver.EXTRA_EVENT_KEY, "test_event")
@@ -441,6 +456,57 @@ class MainActivity : ComponentActivity() {
                                 },
                                 dismissButton = {
                                     TextButton(onClick = { showTimeFormatDialog = false }) {
+                                        Text("Cancel")
+                                    }
+                                },
+                            )
+                        }
+                        if (showAlertStyleDialog) {
+                            AlertDialog(
+                                onDismissRequest = { showAlertStyleDialog = false },
+                                title = { Text(text = "Alert Style") },
+                                text = {
+                                    Column {
+                                        AlertStyleOption.values().forEach { option ->
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(vertical = 4.dp)
+                                                    .clickable {
+                                                        alertStyleOption = option
+                                                    },
+                                            ) {
+                                                RadioButton(
+                                                    selected = option == alertStyleOption,
+                                                    onClick = { alertStyleOption = option },
+                                                )
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text(
+                                                    text = when (option) {
+                                                        AlertStyleOption.SYSTEM_DEFAULT -> "System default"
+                                                        AlertStyleOption.LIGHT -> "Always light"
+                                                        AlertStyleOption.DARK -> "Always dark"
+                                                    },
+                                                )
+                                            }
+                                        }
+                                    }
+                                },
+                                confirmButton = {
+                                    TextButton(
+                                        onClick = {
+                                            showAlertStyleDialog = false
+                                            scope.launch {
+                                                setAlertStyleOption(context, alertStyleOption)
+                                            }
+                                        },
+                                    ) {
+                                        Text("OK")
+                                    }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = { showAlertStyleDialog = false }) {
                                         Text("Cancel")
                                     }
                                 },

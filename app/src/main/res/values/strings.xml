@@ -7,4 +7,9 @@
     <string name="reminder_snooze_5m">5 minutes</string>
     <string name="reminder_snooze_30m">30 minutes</string>
     <string name="reminder_snooze_60m">1 hour</string>
+    <string name="settings_alert_style_title">Alert Style</string>
+    <string name="settings_alert_style_system_default">System default</string>
+    <string name="settings_alert_style_light">Always light</string>
+    <string name="settings_alert_style_dark">Always dark</string>
+    <string name="settings_alert_style_description">Affects only the full-screen alert screen</string>
 </resources>

@@ -13,6 +13,7 @@ private val Context.settingsDataStore: DataStore<Preferences> by preferencesData
 
 private val DATE_FORMAT_KEY = stringPreferencesKey("date_format")
 private val TIME_FORMAT_KEY = stringPreferencesKey("time_format")
+private val ALERT_STYLE_KEY = stringPreferencesKey("alert_style")
 
 enum class DateFormatOption {
     SYSTEM_DEFAULT,
@@ -25,6 +26,12 @@ enum class TimeFormatOption {
     SYSTEM_DEFAULT,
     HOUR_12,
     HOUR_24,
+}
+
+enum class AlertStyleOption {
+    SYSTEM_DEFAULT,
+    LIGHT,
+    DARK,
 }
 
 suspend fun getDateFormatOption(context: Context): DateFormatOption {
@@ -50,6 +57,19 @@ suspend fun getTimeFormatOption(context: Context): TimeFormatOption {
 suspend fun setTimeFormatOption(context: Context, option: TimeFormatOption) {
     context.settingsDataStore.edit { prefs ->
         prefs[TIME_FORMAT_KEY] = option.name
+    }
+}
+
+suspend fun getAlertStyleOption(context: Context): AlertStyleOption {
+    val raw = context.settingsDataStore.data
+        .map { prefs -> prefs[ALERT_STYLE_KEY] ?: AlertStyleOption.SYSTEM_DEFAULT.name }
+        .first()
+    return runCatching { AlertStyleOption.valueOf(raw) }.getOrDefault(AlertStyleOption.SYSTEM_DEFAULT)
+}
+
+suspend fun setAlertStyleOption(context: Context, option: AlertStyleOption) {
+    context.settingsDataStore.edit { prefs ->
+        prefs[ALERT_STYLE_KEY] = option.name
     }
 }
 

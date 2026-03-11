@@ -20,9 +20,11 @@ fun SettingsScreen(
     currentDateFormatLabel: String,
     currentTimeFormatLabel: String,
     currentCalendarLabel: String,
+    currentAlertStyleLabel: String,
     onSelectDateFormat: () -> Unit,
     onSelectTimeFormat: () -> Unit,
     onSelectCalendar: () -> Unit,
+    onSelectAlertStyle: () -> Unit,
     onTestAlert: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -78,7 +80,26 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable { onSelectTimeFormat() },
-        )        
+        )
+        spacer(margin = 8)
+        ListItem(
+            headlineContent = { Text(text = "Alert Style") },
+            supportingContent = {
+                Column {
+                    Text(
+                        text = currentAlertStyleLabel,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Text(
+                        text = "Affects only the full-screen alert screen",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onSelectAlertStyle() },
+        )
     }
 }
 
